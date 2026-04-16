@@ -1,0 +1,7 @@
+{
+  "name": "personal-briefing-engine",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Agent-agnostic personal morning/evening briefing engine",
+  "license": "MIT"
+}
