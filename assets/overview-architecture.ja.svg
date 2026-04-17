@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1020" viewBox="0 0 1600 1020" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="780" viewBox="0 0 1920 780" role="img" aria-labelledby="title desc">
   <title id="title">personal-briefing-engine 全体像</title>
-  <desc id="desc">朝刊夕刊の定期トリガーとイベント駆動トリガーを一つのパイプラインで統合する、個人向け operating briefing engine の日本語要約図。</desc>
+  <desc id="desc">朝刊夕刊とイベント駆動の両方を、AからFまで一直線のステップとして表した日本語SVG図。</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#020617"/>
@@ -15,113 +15,93 @@
     <style>
       .title { font: 700 34px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #f8fafc; }
       .subtitle { font: 500 18px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #cbd5e1; }
-      .section { font: 700 18px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #e2e8f0; }
-      .label { font: 600 16px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #f8fafc; }
+      .step { font: 700 20px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #e2e8f0; }
+      .label { font: 600 15px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #f8fafc; }
       .small { font: 500 13px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #cbd5e1; }
       .tiny { font: 500 12px 'Hiragino Sans','Yu Gothic UI','Meiryo',sans-serif; fill: #94a3b8; }
-      .box { rx: 20; stroke-width: 2; }
-      .card { rx: 18; stroke-width: 2; }
-      .arrow { stroke: #94a3b8; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-      .dashed { stroke-dasharray: 10 8; }
+      .box { rx: 24; stroke-width: 2.2; }
+      .arrow { stroke: #94a3b8; stroke-width: 4; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect width="1600" height="1020" fill="url(#bg)"/>
-  <rect width="1600" height="1020" fill="url(#grid)" opacity="0.45"/>
+  <rect width="1920" height="780" fill="url(#bg)"/>
+  <rect width="1920" height="780" fill="url(#grid)" opacity="0.4"/>
 
-  <text x="70" y="70" class="title">personal-briefing-engine</text>
-  <text x="70" y="105" class="subtitle">朝刊夕刊の定期ブリーフィングと proactive event trigger を、agent 非依存の 1 本の流れで統合する構想。</text>
+  <text x="60" y="64" class="title">personal-briefing-engine</text>
+  <text x="60" y="98" class="subtitle">これは 2 系統ではなく、A から F まで一直線に流れる 1 本のパイプラインです。</text>
 
-  <rect x="60" y="150" width="310" height="360" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
-  <text x="85" y="190" class="section">A. トリガーイベント</text>
-  <rect x="85" y="215" width="260" height="65" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="245" class="label">定期トリガー</text>
-  <text x="105" y="268" class="small">digest.morning ・ digest.evening</text>
-  <rect x="85" y="295" width="260" height="140" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="325" class="label">イベント駆動</text>
-  <text x="105" y="348" class="small">移動が落ち着いた時 ・ 到着した時</text>
-  <text x="105" y="370" class="small">カレンダー予定が近づいた時</text>
-  <text x="105" y="392" class="small">出発時刻が来た時 ・ 運用メール到着時</text>
-  <text x="105" y="414" class="small">補充購入が必要になった時</text>
-  <rect x="85" y="450" width="260" height="40" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="476" class="small">review.trigger_quality</text>
+  <rect x="40" y="140" width="270" height="390" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
+  <text x="62" y="180" class="step">A. トリガーイベント</text>
+  <text x="62" y="220" class="label">定期トリガー</text>
+  <text x="62" y="244" class="small">digest.morning ・ digest.evening</text>
+  <text x="62" y="284" class="label">イベント駆動</text>
+  <text x="62" y="308" class="small">移動が落ち着いた時 / 到着した時</text>
+  <text x="62" y="332" class="small">カレンダー予定が近づいた時</text>
+  <text x="62" y="356" class="small">出発時刻が来た時</text>
+  <text x="62" y="380" class="small">運用メールが届いた時</text>
+  <text x="62" y="404" class="small">補充購入が必要になった時</text>
+  <text x="62" y="452" class="tiny">review.trigger_quality は trigger 条件を見直す自己改善ループ。</text>
 
-  <rect x="60" y="540" width="310" height="360" class="box" fill="rgba(30,41,59,0.4)" stroke="#94a3b8"/>
-  <text x="85" y="580" class="section">B. 収集</text>
-  <rect x="85" y="605" width="260" height="84" class="card" fill="#0f172a" stroke="#94a3b8"/>
-  <text x="105" y="635" class="label">運用コンテキスト source</text>
-  <text x="105" y="658" class="small">Calendar ・ Gmail ・ Notes</text>
-  <text x="105" y="680" class="small">Maps ・ Location history</text>
-  <rect x="85" y="705" width="260" height="84" class="card" fill="#0f172a" stroke="#94a3b8"/>
-  <text x="105" y="735" class="label">会話 source</text>
-  <text x="105" y="758" class="small">Hermes ・ ChatGPT ・ Grok</text>
-  <text x="105" y="780" class="small">local / export / share / manual</text>
-  <rect x="85" y="805" width="260" height="70" class="card" fill="#0f172a" stroke="#94a3b8"/>
-  <text x="105" y="835" class="label">SNS / memory source</text>
-  <text x="105" y="858" class="small">X timeline ・ bookmarks ・ likes</text>
+  <rect x="350" y="140" width="270" height="390" class="box" fill="rgba(30,41,59,0.42)" stroke="#94a3b8"/>
+  <text x="372" y="180" class="step">B. 収集</text>
+  <text x="372" y="220" class="label">必要な source だけ集める</text>
+  <text x="372" y="250" class="small">運用コンテキスト:</text>
+  <text x="372" y="272" class="small">Calendar ・ Gmail ・ Notes ・ Maps ・ Location</text>
+  <text x="372" y="308" class="small">会話 source:</text>
+  <text x="372" y="330" class="small">Hermes ・ ChatGPT ・ Grok</text>
+  <text x="372" y="352" class="small">local / export / share / manual</text>
+  <text x="372" y="388" class="small">SNS / memory source:</text>
+  <text x="372" y="410" class="small">X timeline ・ bookmarks ・ likes</text>
+  <text x="372" y="452" class="tiny">収集ポリシー: trigger profile に必要な範囲だけ取りに行く。</text>
+  <text x="372" y="474" class="tiny">方式: local_store ・ official_api ・ export ・ manual</text>
 
-  <rect x="460" y="170" width="290" height="180" class="box" fill="rgba(6,78,59,0.35)" stroke="#34d399"/>
-  <text x="485" y="210" class="section">収集ポリシー</text>
-  <text x="485" y="245" class="label">Acquisition plan</text>
-  <text x="485" y="270" class="small">trigger profile に必要な範囲だけ取りに行く</text>
-  <text x="485" y="300" class="tiny">local_store ・ official_api ・ official_export</text>
-  <text x="485" y="322" class="tiny">share_link_import ・ manual_import ・ browser_automation_experimental</text>
+  <rect x="660" y="140" width="270" height="390" class="box" fill="rgba(6,78,59,0.35)" stroke="#34d399"/>
+  <text x="682" y="180" class="step">C. 統合 / ranking</text>
+  <text x="682" y="220" class="label">束ねて、順位付けして、ノイズを抑える</text>
+  <text x="682" y="250" class="small">people ・ time ・ place ・ open loops</text>
+  <text x="682" y="274" class="small">resurfacing ・ quota ・ dedupe</text>
+  <text x="682" y="316" class="tiny">優先順位:</text>
+  <text x="682" y="338" class="tiny">未来 relevance &gt; people overlap &gt; urgency</text>
+  <text x="682" y="360" class="tiny">&gt; saved intent &gt; external deltas &gt; passive signals</text>
+  <text x="682" y="402" class="tiny">X 内では bookmark &gt; like &gt; home timeline diff</text>
 
-  <rect x="460" y="395" width="290" height="255" class="box" fill="rgba(6,78,59,0.35)" stroke="#34d399"/>
-  <text x="485" y="435" class="section">C. 統合 / ranking / suppression</text>
-  <text x="485" y="470" class="label">束ねて、順位付けして、ノイズを抑える</text>
-  <text x="485" y="495" class="small">people ・ time ・ place ・ open loops</text>
-  <text x="485" y="520" class="small">resurfacing ・ quota ・ dedupe</text>
-  <text x="485" y="555" class="tiny">優先順位:</text>
-  <text x="485" y="577" class="tiny">未来 relevance &gt; people overlap &gt; urgency</text>
-  <text x="485" y="599" class="tiny">&gt; saved intent &gt; external deltas &gt; passive signals</text>
-  <text x="485" y="630" class="tiny">X 内では bookmark &gt; like &gt; home timeline diff</text>
+  <rect x="970" y="140" width="270" height="390" class="box" fill="rgba(76,29,149,0.35)" stroke="#a78bfa"/>
+  <text x="992" y="180" class="step">D. 出力生成</text>
+  <text x="992" y="220" class="label">いちばん適切な形に整える</text>
+  <text x="992" y="252" class="small">digest</text>
+  <text x="992" y="276" class="small">mini_digest</text>
+  <text x="992" y="300" class="small">warning</text>
+  <text x="992" y="324" class="small">nudge</text>
+  <text x="992" y="348" class="small">action_prep</text>
+  <text x="992" y="392" class="tiny">朝刊夕刊は別エンジンではなく、scheduled trigger profile。</text>
 
-  <rect x="840" y="170" width="320" height="240" class="box" fill="rgba(76,29,149,0.35)" stroke="#a78bfa"/>
-  <text x="865" y="210" class="section">D. 出力生成</text>
-  <rect x="865" y="235" width="270" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="885" y="266" class="label">digest</text>
-  <rect x="865" y="295" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="885" y="326" class="small">mini_digest</text>
-  <rect x="1005" y="295" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="1040" y="326" class="small">warning</text>
-  <rect x="865" y="355" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="910" y="386" class="small">nudge</text>
-  <rect x="1005" y="355" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="1030" y="386" class="small">action_prep</text>
+  <rect x="1280" y="140" width="270" height="390" class="box" fill="rgba(120,53,15,0.30)" stroke="#fbbf24"/>
+  <text x="1302" y="180" class="step">E. 配信 / 実行</text>
+  <text x="1302" y="220" class="label">配信するか、実行直前まで進める</text>
+  <text x="1302" y="250" class="small">Slack ・ Telegram ・ local files</text>
+  <text x="1302" y="286" class="small">L0 observe</text>
+  <text x="1302" y="310" class="small">L1 suggest</text>
+  <text x="1302" y="334" class="small">L2 prepare</text>
+  <text x="1302" y="358" class="small">L3 approve + execute</text>
 
-  <rect x="840" y="455" width="320" height="195" class="box" fill="rgba(120,53,15,0.30)" stroke="#fbbf24"/>
-  <text x="865" y="495" class="section">E. 配信 / 実行</text>
-  <text x="865" y="530" class="label">Adapter</text>
-  <text x="865" y="555" class="small">Slack ・ Telegram ・ local files ・ future app UI</text>
-  <text x="865" y="590" class="label">Action level</text>
-  <text x="865" y="615" class="small">L0 observe ・ L1 suggest ・ L2 prepare ・ L3 approve+execute</text>
+  <rect x="1590" y="140" width="290" height="390" class="box" fill="rgba(136,19,55,0.35)" stroke="#fb7185"/>
+  <text x="1612" y="180" class="step">F. 状態 / audit</text>
+  <text x="1612" y="220" class="label">何が起きたかを残す</text>
+  <text x="1612" y="250" class="small">connector cursor</text>
+  <text x="1612" y="274" class="small">delivery history</text>
+  <text x="1612" y="298" class="small">suppression log</text>
+  <text x="1612" y="322" class="small">approval / action log</text>
+  <text x="1612" y="346" class="small">trigger run log</text>
+  <text x="1612" y="370" class="small">feedback log</text>
+  <text x="1612" y="414" class="tiny">X diff state: last_poll_at ・ last_top_id ・ seen_ids</text>
 
-  <rect x="1250" y="230" width="290" height="330" class="box" fill="rgba(136,19,55,0.35)" stroke="#fb7185"/>
-  <text x="1275" y="270" class="section">F. 状態 / memory / audit</text>
-  <text x="1275" y="305" class="label">SQLite + raw artifact refs</text>
-  <text x="1275" y="335" class="small">connector cursor</text>
-  <text x="1275" y="360" class="small">delivery history</text>
-  <text x="1275" y="385" class="small">suppression log</text>
-  <text x="1275" y="410" class="small">approval / action log</text>
-  <text x="1275" y="435" class="small">trigger run log</text>
-  <text x="1275" y="460" class="small">feedback log</text>
-  <text x="1275" y="500" class="tiny">X diff state: last_poll_at ・ last_top_id ・ seen_ids</text>
+  <path d="M 310 335 L 350 335" class="arrow"/>
+  <path d="M 620 335 L 660 335" class="arrow"/>
+  <path d="M 930 335 L 970 335" class="arrow"/>
+  <path d="M 1240 335 L 1280 335" class="arrow"/>
+  <path d="M 1550 335 L 1590 335" class="arrow"/>
 
-  <rect x="460" y="720" width="1080" height="210" class="box" fill="rgba(15,23,42,0.65)" stroke="#475569"/>
-  <text x="490" y="760" class="section">このプロジェクト全体で実現したいこと</text>
-  <text x="490" y="795" class="small">ユーザーの「今」と「次」に向けて、必要な文脈を先回りして再構成する personal operating briefing engine。</text>
-  <text x="490" y="830" class="tiny">• 未来の予定と会う人の文脈を、朝刊夕刊だけでなく適切な瞬間に再起する</text>
-  <text x="490" y="852" class="tiny">• Gmail / 会話履歴 / saved posts / notes から open loop と follow-up を浮かび上がらせる</text>
-  <text x="490" y="874" class="tiny">• 忘れていたが今 relevant な bookmark / like / memory を resurfacing する</text>
-  <text x="930" y="830" class="tiny">• Hermes / ChatGPT / Grok をまたいだ multi-agent memory を扱う</text>
-  <text x="930" y="852" class="tiny">• X は重要だが支配的にはせず、 relevance と quota で丁寧に扱う</text>
-  <text x="930" y="874" class="tiny">• 朝夕の定期 digest だけでなく、移動が落ち着いた時や予定が近づいた時にも動く</text>
-
-  <path d="M 215 510 C 215 522, 215 528, 215 540" class="arrow"/>
-  <path d="M 370 720 C 410 720, 420 520, 460 520" class="arrow"/>
-  <path d="M 750 520 C 790 520, 800 290, 840 290" class="arrow"/>
-  <path d="M 1160 290 C 1200 290, 1210 550, 840 550" class="arrow"/>
-  <path d="M 1160 550 C 1200 550, 1210 390, 1250 390" class="arrow"/>
-
-  <text x="70" y="975" class="tiny">この図は直列のステップとして読むのが正しく、A で trigger が発生し、B で必要な source を集め、C で統合・順位付けし、D で出力を整え、E で配信または実行準備し、F で state と audit を記録します。</text>
+  <rect x="40" y="590" width="1840" height="120" class="box" fill="rgba(15,23,42,0.65)" stroke="#475569"/>
+  <text x="64" y="632" class="label">このプロジェクト全体で実現したいこと</text>
+  <text x="64" y="662" class="small">未来の予定、人、open loop、resurfacing、multi-agent memory、そして X を丁寧に扱いながら、ユーザーの「今」と「次」に必要な文脈を先回りして再構成する personal operating briefing engine。</text>
+  <text x="64" y="688" class="tiny">大事なのは直列ステップで読むこと: trigger → collect → synthesize → format → deliver → record。朝夕とイベント駆動は、同じパイプラインへの入口条件が違うだけです。</text>
 </svg>

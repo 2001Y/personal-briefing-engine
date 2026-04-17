@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="760" viewBox="0 0 1920 760" role="img" aria-labelledby="title desc">
   <title id="title">personal-briefing-engine overview</title>
-  <desc id="desc">Unified trigger-driven personal operating briefing engine with scheduled and event-driven triggers, source families, synthesis, outputs, and state.</desc>
+  <desc id="desc">A serial six-step pipeline for a personal operating briefing engine: trigger, collection, synthesis, output generation, delivery, and state/audit.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#020617"/>
@@ -13,125 +13,96 @@
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/>
     </marker>
     <style>
-      .title { font: 700 34px 'Inter', 'Segoe UI', Arial, sans-serif; fill: #f8fafc; }
-      .subtitle { font: 500 18px 'Inter', 'Segoe UI', Arial, sans-serif; fill: #cbd5e1; }
-      .section { font: 700 18px 'Inter', 'Segoe UI', Arial, sans-serif; fill: #e2e8f0; }
-      .label { font: 600 16px 'Inter', 'Segoe UI', Arial, sans-serif; fill: #f8fafc; }
-      .small { font: 500 13px 'Inter', 'Segoe UI', Arial, sans-serif; fill: #cbd5e1; }
-      .tiny { font: 500 12px 'Inter', 'Segoe UI', Arial, sans-serif; fill: #94a3b8; }
-      .box { rx: 20; stroke-width: 2; }
-      .card { rx: 18; stroke-width: 2; }
-      .arrow { stroke: #94a3b8; stroke-width: 3; fill: none; marker-end: url(#arrow); }
-      .dashed { stroke-dasharray: 10 8; }
+      .title { font: 700 34px 'Inter','Segoe UI',Arial,sans-serif; fill: #f8fafc; }
+      .subtitle { font: 500 18px 'Inter','Segoe UI',Arial,sans-serif; fill: #cbd5e1; }
+      .step { font: 700 20px 'Inter','Segoe UI',Arial,sans-serif; fill: #e2e8f0; }
+      .label { font: 600 15px 'Inter','Segoe UI',Arial,sans-serif; fill: #f8fafc; }
+      .small { font: 500 13px 'Inter','Segoe UI',Arial,sans-serif; fill: #cbd5e1; }
+      .tiny { font: 500 12px 'Inter','Segoe UI',Arial,sans-serif; fill: #94a3b8; }
+      .box { rx: 24; stroke-width: 2.2; }
+      .arrow { stroke: #94a3b8; stroke-width: 4; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
-  <rect width="1600" height="980" fill="url(#bg)"/>
-  <rect width="1600" height="980" fill="url(#grid)" opacity="0.45"/>
+  <rect width="1920" height="760" fill="url(#bg)"/>
+  <rect width="1920" height="760" fill="url(#grid)" opacity="0.4"/>
 
-  <text x="70" y="70" class="title">personal-briefing-engine</text>
-  <text x="70" y="105" class="subtitle">Agent-agnostic personal operating briefing engine that unifies scheduled briefings and proactive event triggers.</text>
+  <text x="60" y="64" class="title">personal-briefing-engine</text>
+  <text x="60" y="98" class="subtitle">Read this as one serial pipeline, not two parallel systems.</text>
 
-  <!-- Trigger family -->
-  <rect x="60" y="150" width="310" height="360" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
-  <text x="85" y="190" class="section">A. Trigger events</text>
-  <rect x="85" y="215" width="260" height="65" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="245" class="label">Scheduled</text>
-  <text x="105" y="268" class="small">digest.morning · digest.evening</text>
-  <rect x="85" y="295" width="260" height="140" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="325" class="label">Event-driven</text>
-  <text x="105" y="348" class="small">when movement settles down / arrival happens</text>
-  <text x="105" y="370" class="small">when a calendar event is getting close</text>
-  <text x="105" y="392" class="small">when it is time to leave / operational mail arrives</text>
-  <text x="105" y="414" class="small">when replenishment or repurchase is due</text>
-  <rect x="85" y="450" width="260" height="40" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="476" class="small">review.trigger_quality</text>
+  <rect x="40" y="140" width="270" height="360" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
+  <text x="62" y="180" class="step">A. Trigger events</text>
+  <text x="62" y="220" class="label">Scheduled</text>
+  <text x="62" y="244" class="small">digest.morning · digest.evening</text>
+  <text x="62" y="284" class="label">Event-driven</text>
+  <text x="62" y="308" class="small">when movement settles / arrival happens</text>
+  <text x="62" y="332" class="small">when a calendar event is getting close</text>
+  <text x="62" y="356" class="small">when it is time to leave</text>
+  <text x="62" y="380" class="small">when operational mail arrives</text>
+  <text x="62" y="404" class="small">when replenishment is due</text>
+  <text x="62" y="452" class="tiny">review.trigger_quality also tunes the trigger layer over time.</text>
 
-  <!-- Collection -->
-  <rect x="60" y="540" width="310" height="360" class="box" fill="rgba(30,41,59,0.4)" stroke="#94a3b8"/>
-  <text x="85" y="580" class="section">B. Collection</text>
-  <rect x="85" y="605" width="260" height="84" class="card" fill="#0f172a" stroke="#94a3b8"/>
-  <text x="105" y="635" class="label">Operational context sources</text>
-  <text x="105" y="658" class="small">Calendar · Gmail · Notes</text>
-  <text x="105" y="680" class="small">Maps · Location history</text>
-  <rect x="85" y="705" width="260" height="84" class="card" fill="#0f172a" stroke="#94a3b8"/>
-  <text x="105" y="735" class="label">Conversation sources</text>
-  <text x="105" y="758" class="small">Hermes · ChatGPT · Grok</text>
-  <text x="105" y="780" class="small">via local / export / share / manual</text>
-  <rect x="85" y="805" width="260" height="70" class="card" fill="#0f172a" stroke="#94a3b8"/>
-  <text x="105" y="835" class="label">Social / memory sources</text>
-  <text x="105" y="858" class="small">X timeline · bookmarks · likes</text>
+  <rect x="350" y="140" width="270" height="360" class="box" fill="rgba(30,41,59,0.42)" stroke="#94a3b8"/>
+  <text x="372" y="180" class="step">B. Collection</text>
+  <text x="372" y="220" class="label">Gather only needed sources</text>
+  <text x="372" y="250" class="small">Operational context:</text>
+  <text x="372" y="272" class="small">Calendar · Gmail · Notes · Maps · Location</text>
+  <text x="372" y="308" class="small">Conversation sources:</text>
+  <text x="372" y="330" class="small">Hermes · ChatGPT · Grok</text>
+  <text x="372" y="352" class="small">via local / export / share / manual</text>
+  <text x="372" y="388" class="small">Social / memory sources:</text>
+  <text x="372" y="410" class="small">X timeline · bookmarks · likes</text>
+  <text x="372" y="452" class="tiny">Policy: fetch only what the trigger profile actually needs.</text>
+  <text x="372" y="474" class="tiny">Modes: local_store · official_api · export · manual</text>
 
-  <!-- Collection policy -->
-  <rect x="460" y="170" width="290" height="180" class="box" fill="rgba(6,78,59,0.35)" stroke="#34d399"/>
-  <text x="485" y="210" class="section">Collection policy</text>
-  <text x="485" y="245" class="label">Acquisition plan</text>
-  <text x="485" y="270" class="small">Collect only what the trigger profile needs</text>
-  <text x="485" y="300" class="tiny">Modes: local_store · official_api · official_export</text>
-  <text x="485" y="322" class="tiny">share_link_import · manual_import · browser_automation_experimental</text>
+  <rect x="660" y="140" width="270" height="360" class="box" fill="rgba(6,78,59,0.35)" stroke="#34d399"/>
+  <text x="682" y="180" class="step">C. Synthesis / ranking</text>
+  <text x="682" y="220" class="label">Bundle and suppress noise</text>
+  <text x="682" y="250" class="small">people · time · place · open loops</text>
+  <text x="682" y="274" class="small">resurfacing · quotas · dedupe</text>
+  <text x="682" y="316" class="tiny">Priority order:</text>
+  <text x="682" y="338" class="tiny">future relevance &gt; people overlap &gt; urgency</text>
+  <text x="682" y="360" class="tiny">&gt; saved intent &gt; external deltas &gt; passive signals</text>
+  <text x="682" y="402" class="tiny">Within X: bookmark &gt; like &gt; home timeline diff</text>
 
-  <!-- Synthesis -->
-  <rect x="460" y="395" width="290" height="255" class="box" fill="rgba(6,78,59,0.35)" stroke="#34d399"/>
-  <text x="485" y="435" class="section">C. Synthesis / ranking / suppression</text>
-  <text x="485" y="470" class="label">Bundle and rank</text>
-  <text x="485" y="495" class="small">people · time · place · open loops</text>
-  <text x="485" y="520" class="small">resurfacing · quotas · dedupe</text>
-  <text x="485" y="555" class="tiny">Priority:</text>
-  <text x="485" y="577" class="tiny">future relevance &gt; people overlap &gt; urgency</text>
-  <text x="485" y="599" class="tiny">&gt; saved intent &gt; external deltas &gt; passive signals</text>
-  <text x="485" y="630" class="tiny">Within X: bookmark &gt; like &gt; home timeline diff</text>
+  <rect x="970" y="140" width="270" height="360" class="box" fill="rgba(76,29,149,0.35)" stroke="#a78bfa"/>
+  <text x="992" y="180" class="step">D. Output generation</text>
+  <text x="992" y="220" class="label">Choose the right format</text>
+  <text x="992" y="252" class="small">digest</text>
+  <text x="992" y="276" class="small">mini_digest</text>
+  <text x="992" y="300" class="small">warning</text>
+  <text x="992" y="324" class="small">nudge</text>
+  <text x="992" y="348" class="small">action_prep</text>
+  <text x="992" y="392" class="tiny">Morning/evening are just scheduled trigger profiles,</text>
+  <text x="992" y="414" class="tiny">not separate engines.</text>
 
-  <!-- Outputs -->
-  <rect x="840" y="170" width="320" height="240" class="box" fill="rgba(76,29,149,0.35)" stroke="#a78bfa"/>
-  <text x="865" y="210" class="section">D. Output generation</text>
-  <rect x="865" y="235" width="270" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="885" y="266" class="label">digest</text>
-  <rect x="865" y="295" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="885" y="326" class="small">mini_digest</text>
-  <rect x="1005" y="295" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="1040" y="326" class="small">warning</text>
-  <rect x="865" y="355" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="910" y="386" class="small">nudge</text>
-  <rect x="1005" y="355" width="130" height="50" class="card" fill="#0f172a" stroke="#a78bfa"/>
-  <text x="1030" y="386" class="small">action_prep</text>
+  <rect x="1280" y="140" width="270" height="360" class="box" fill="rgba(120,53,15,0.30)" stroke="#fbbf24"/>
+  <text x="1302" y="180" class="step">E. Delivery / execution</text>
+  <text x="1302" y="220" class="label">Deliver or prepare action</text>
+  <text x="1302" y="250" class="small">Slack · Telegram · local files</text>
+  <text x="1302" y="286" class="small">L0 observe</text>
+  <text x="1302" y="310" class="small">L1 suggest</text>
+  <text x="1302" y="334" class="small">L2 prepare</text>
+  <text x="1302" y="358" class="small">L3 approve + execute</text>
 
-  <!-- Delivery -->
-  <rect x="840" y="455" width="320" height="195" class="box" fill="rgba(120,53,15,0.30)" stroke="#fbbf24"/>
-  <text x="865" y="495" class="section">E. Delivery / action execution</text>
-  <text x="865" y="530" class="label">Adapters</text>
-  <text x="865" y="555" class="small">Slack · Telegram · local files · future app UI</text>
-  <text x="865" y="590" class="label">Action levels</text>
-  <text x="865" y="615" class="small">L0 observe · L1 suggest · L2 prepare · L3 approve+execute</text>
+  <rect x="1590" y="140" width="290" height="360" class="box" fill="rgba(136,19,55,0.35)" stroke="#fb7185"/>
+  <text x="1612" y="180" class="step">F. State / audit</text>
+  <text x="1612" y="220" class="label">Record what happened</text>
+  <text x="1612" y="250" class="small">connector cursors</text>
+  <text x="1612" y="274" class="small">delivery history</text>
+  <text x="1612" y="298" class="small">suppression log</text>
+  <text x="1612" y="322" class="small">approval / action log</text>
+  <text x="1612" y="346" class="small">trigger run log</text>
+  <text x="1612" y="370" class="small">feedback log</text>
+  <text x="1612" y="414" class="tiny">X diff state: last_poll_at · last_top_id · seen_ids</text>
 
-  <!-- State -->
-  <rect x="1250" y="230" width="290" height="330" class="box" fill="rgba(136,19,55,0.35)" stroke="#fb7185"/>
-  <text x="1275" y="270" class="section">F. State / memory / audit</text>
-  <text x="1275" y="305" class="label">SQLite + raw artifact refs</text>
-  <text x="1275" y="335" class="small">connector cursors</text>
-  <text x="1275" y="360" class="small">delivery history</text>
-  <text x="1275" y="385" class="small">suppression log</text>
-  <text x="1275" y="410" class="small">approval / action log</text>
-  <text x="1275" y="435" class="small">trigger run log</text>
-  <text x="1275" y="460" class="small">feedback log</text>
-  <text x="1275" y="500" class="tiny">X diff state: last_poll_at · last_top_id · seen_ids</text>
+  <path d="M 310 320 L 350 320" class="arrow"/>
+  <path d="M 620 320 L 660 320" class="arrow"/>
+  <path d="M 930 320 L 970 320" class="arrow"/>
+  <path d="M 1240 320 L 1280 320" class="arrow"/>
+  <path d="M 1550 320 L 1590 320" class="arrow"/>
 
-  <!-- Bottom insight strip -->
-  <rect x="460" y="720" width="1080" height="180" class="box" fill="rgba(15,23,42,0.65)" stroke="#475569"/>
-  <text x="490" y="760" class="section">What the project is trying to achieve</text>
-  <text x="490" y="795" class="small">A personal operating briefing engine that prepares the user for what matters now and next:</text>
-  <text x="490" y="825" class="tiny">• future-facing calendar and people context</text>
-  <text x="490" y="847" class="tiny">• open-loop and operational email awareness</text>
-  <text x="490" y="869" class="tiny">• resurfacing of saved / forgotten but relevant context</text>
-  <text x="930" y="825" class="tiny">• multi-agent memory from Hermes, ChatGPT, and Grok</text>
-  <text x="930" y="847" class="tiny">• careful X integration without letting X dominate the product</text>
-  <text x="930" y="869" class="tiny">• proactive behavior not only for morning/evening digests, but also when movement settles or an event is getting close</text>
-
-  <!-- arrows -->
-  <path d="M 215 510 C 215 522, 215 528, 215 540" class="arrow"/>
-  <path d="M 370 720 C 410 720, 420 520, 460 520" class="arrow"/>
-  <path d="M 750 520 C 790 520, 800 290, 840 290" class="arrow"/>
-  <path d="M 1160 290 C 1200 290, 1210 550, 840 550" class="arrow"/>
-  <path d="M 1160 550 C 1200 550, 1210 390, 1250 390" class="arrow"/>
-
-  <!-- footer -->
-  <text x="70" y="945" class="tiny">This diagram should be read as a serial pipeline: A trigger happens, B gathers the needed sources, C synthesizes and ranks, D formats output, E delivers or prepares action, and F records state and audit.</text>
+  <rect x="40" y="560" width="1840" height="120" class="box" fill="rgba(15,23,42,0.65)" stroke="#475569"/>
+  <text x="64" y="602" class="label">What the project is trying to achieve</text>
+  <text x="64" y="632" class="small">A personal operating briefing engine that proactively reconstructs what matters now and next: future schedule context, people prep, open loops, resurfacing, multi-agent memory, and careful X integration.</text>
+  <text x="64" y="658" class="tiny">The key point is serial flow: trigger → collect → synthesize → format → deliver → record. Morning/evening and event-driven behavior are different entry conditions into the same pipeline.</text>
 </svg>
