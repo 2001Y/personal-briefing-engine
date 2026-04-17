@@ -1,5 +1,7 @@
 # personal-briefing-engine
 
+English README / [日本語版README](./README.ja.md)
+
 Agent-agnostic personal operating briefing engine.
 
 This repository defines a unified architecture for two things that should not be designed separately:
