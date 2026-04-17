@@ -1,24 +1,26 @@
-# personal-briefing-engine
+# hermes-briefing-pipeline
 
 English README / [日本語版README](./README.ja.md)
 
-Agent-agnostic personal operating briefing engine.
+Hermes-first personal briefing pipeline for scheduled and proactive delivery.
 
-This repository defines a unified architecture for two things that should not be designed separately:
+This repository is organized around one practical flow:
 
-1. **scheduled briefings** such as morning and evening editions
-2. **event-driven proactive triggers** such as when movement settles down, when arrival is detected, when a calendar event is getting close, when it is time to leave, when operational mail arrives, and when replenishment reminders become actionable
+1. **Trigger** — cron schedules or other trigger sources start a run
+2. **Collect** — fetch only the sources needed for that trigger
+3. **Compose** — synthesize context into a briefing, reply draft, warning, or nudge
+4. **Deliver** — send the result to the user through the chosen channel
 
-The project is intentionally **not Hermes-only**. Hermes Agent is one strong runtime example, but the core design should also work as a standalone daemon/CLI or under other agent runtimes.
+Today, the primary target runtime is **Hermes Agent**. The design may later be adapted to OpenClaw, Codex, Claude Code, or standalone runtimes using skills and MCP, but this repository currently optimizes for the Hermes use case first.
 
 ## Visual summary
 
-![personal-briefing-engine overview](./assets/overview-architecture.svg)
+![hermes-briefing-pipeline overview](./assets/overview-architecture.svg)
 
-## Product thesis
+## What this repo does
 
 This is **not** a generic AI news summary app.
-The product is a personal operating system for attention and action.
+It is a Hermes-first personal operating briefing pipeline for attention and action.
 It should answer:
 
 - What matters now?
@@ -28,69 +30,45 @@ It should answer:
 - What should be resurfaced instead of forgotten?
 - When should the system proactively act before I ask?
 
-## Top-level architecture
+## Core flow
 
-The whole system uses one shared A-F pipeline:
+The runtime-facing flow is intentionally simple:
 
-1. **Trigger events** — scheduled or event-driven triggers create a `TriggerEvent`
-2. **Collection** — fetch only the sources needed for that trigger profile
-3. **Synthesis / ranking / suppression** — bundle evidence into candidates and avoid spam
-4. **Output generation** — render digest, warning, nudge, or action-prep output
-5. **Delivery / action execution** — send the result or prepare a side-effectful action
-6. **State / memory / audit** — persist cursors, delivery history, approvals, and feedback
+### 1. Trigger
+Scheduled and proactive triggers enter the same pipeline.
 
-Morning and evening are therefore **just scheduled trigger profiles**, not separate engines.
-
-## Trigger families
-
-### Scheduled triggers
+Examples:
 - `digest.morning`
 - `digest.evening`
 - `review.trigger_quality`
-
-### Event-driven triggers
 - `location.arrival`
 - `location.dwell`
-- `location.area_change`
 - `calendar.leave_now`
-- `calendar.gap_window`
 - `mail.operational`
 - `shopping.replenishment`
-- later: `interest.watch`, `price.drop`, `reservation.change`
 
-## Source families
+### 2. Collect
+Fetch only the sources needed for that trigger profile.
 
-### Operational context
-- Calendar
-- Gmail / email
+Source families:
+- Calendar / Gmail / email
 - Notes / docs
 - Maps / saved places
 - Location history (for example Dawarich)
+- Hermes Agent conversation history
+- ChatGPT / Grok history where available through local, export, share, or manual paths
+- X home timeline diff / bookmarks / likes
 
-### Agent conversation history
-- Hermes Agent
-- ChatGPT
-- Grok
+### 3. Compose
+Bundle evidence, rank relevance, suppress spam, and generate the right output type.
 
-### Social / memory sources
-- X home timeline diff
-- X bookmarks
-- X likes
-- later: Google Photos, Instagram, blog/RSS, commerce/order history
-
-## Design principles
-
-- **Agent-agnostic core**
-- **Minimal layers**: one runner, not a microservice zoo
-- **Live retrieval first**
-- **Simple canonical data model**
-- **Strong provenance** for imported/non-live sources
-- **User-intent signals outrank passive signals**
-- **LLMs compress and explain; they do not replace source truth**
-
-## X / Twitter stance
-
-X is important, but it is not the whole product.
+Possible outputs:
+- digest
+- mini-digest
+- warning
+- nudge
+- action-prep
+- reply draft
 
 Priority should remain:
 - future relevance
@@ -102,7 +80,44 @@ Priority should remain:
 Within X itself:
 - `bookmark > like > home timeline diff`
 
-Home timeline diff is treated as a **high-value but noisy novelty source**. It must pass through relevance and quota rules before appearing in output.
+### 4. Deliver
+Deliver the result or prepare the next action through the chosen runtime/channel.
+
+Initial delivery targets:
+- Hermes Agent cron jobs
+- Slack / Telegram / local files via Hermes delivery paths
+
+## Why Hermes first
+
+This repo used to frame itself mainly as agent-agnostic architecture.
+That portability still matters, but it should not be the main entry point.
+
+For now, the practical target is:
+- **runtime:** Hermes Agent
+- **scheduler:** cron-based runs
+- **shape:** trigger → collect → compose → deliver
+- **goal:** personal briefings and proactive notifications that actually help in the next moment
+
+## Future portability
+
+The internal model is meant to stay portable.
+Later, the same structure may run under:
+- OpenClaw
+- Codex + skills + MCP
+- Claude Code + skills + MCP
+- standalone daemons / CLIs
+
+But those are follow-on targets, not the primary positioning of this repository today.
+
+## Design principles
+
+- **Hermes-first runtime target**
+- **Minimal layers**: one runner, not a microservice zoo
+- **Live retrieval first**
+- **Simple canonical data model**
+- **Strong provenance** for imported/non-live sources
+- **User-intent signals outrank passive signals**
+- **LLMs compress and explain; they do not replace source truth**
 
 ## Docs index
 
@@ -124,9 +139,10 @@ Home timeline diff is treated as a **high-value but noisy novelty source**. It m
 
 This repository is currently a **planning and architecture repo**.
 It intentionally documents:
-- the unified system model
+- the Hermes-first system model
 - source acquisition constraints
 - ranking and suppression policy
+- delivery and approval patterns
 - state and audit requirements
 - a phased roadmap for future implementation
 

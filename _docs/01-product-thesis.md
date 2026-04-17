@@ -2,7 +2,7 @@
 
 ## Product statement
 
-Build an **agent-agnostic personal operating briefing engine** that combines future preparation, people context, unresolved loops, resurfaced memory, and carefully filtered external deltas.
+Build a **Hermes-first personal briefing pipeline** that combines future preparation, people context, unresolved loops, resurfaced memory, and carefully filtered external deltas.
 
 ## What makes this product different
 
@@ -67,9 +67,9 @@ But X must remain subordinate to the larger product thesis.
 The product is not “an X digest with some calendar sprinkled on top.”
 It is a personal operating briefing engine where X is one important source family.
 
-## Agent-agnostic requirement
+## Runtime portability requirement
 
-The repo must not assume one runtime forever.
+The repo should currently optimize for Hermes-first execution without assuming one runtime forever.
 The architecture should remain valid when run:
 - inside Hermes Agent
 - as a standalone service

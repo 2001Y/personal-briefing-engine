@@ -2,7 +2,7 @@
 
 ## Principle
 
-The engine is **agent-compatible, not Hermes-only**.
+The current target is **Hermes-first**, but the connector model should remain portable.
 Connector design must be driven by acquisition reality, not by branding.
 
 ## Acquisition modes

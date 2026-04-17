@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="760" viewBox="0 0 1920 760" role="img" aria-labelledby="title desc">
-  <title id="title">personal-briefing-engine overview</title>
-  <desc id="desc">A serial six-step pipeline for a personal operating briefing engine: trigger, collection, synthesis, output generation, delivery, and state/audit.</desc>
+  <title id="title">hermes-briefing-pipeline overview</title>
+  <desc id="desc">A Hermes-first serial pipeline for personal briefings: trigger, collect, compose, deliver, and the supporting state/audit layers behind them.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#020617"/>
@@ -26,8 +26,8 @@
   <rect width="1920" height="760" fill="url(#bg)"/>
   <rect width="1920" height="760" fill="url(#grid)" opacity="0.4"/>
 
-  <text x="60" y="64" class="title">personal-briefing-engine</text>
-  <text x="60" y="98" class="subtitle">Read this as one serial pipeline, not two parallel systems.</text>
+  <text x="60" y="64" class="title">hermes-briefing-pipeline</text>
+  <text x="60" y="98" class="subtitle">Hermes-first: read this as one serial pipeline, not two parallel systems.</text>
 
   <rect x="40" y="140" width="270" height="360" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
   <text x="62" y="180" class="step">A. Trigger events</text>
@@ -103,6 +103,6 @@
 
   <rect x="40" y="560" width="1840" height="120" class="box" fill="rgba(15,23,42,0.65)" stroke="#475569"/>
   <text x="64" y="602" class="label">What the project is trying to achieve</text>
-  <text x="64" y="632" class="small">A personal operating briefing engine that proactively reconstructs what matters now and next: future schedule context, people prep, open loops, resurfacing, multi-agent memory, and careful X integration.</text>
-  <text x="64" y="658" class="tiny">The key point is serial flow: trigger → collect → synthesize → format → deliver → record. Morning/evening and event-driven behavior are different entry conditions into the same pipeline.</text>
+  <text x="64" y="632" class="small">A Hermes-first personal briefing pipeline that reconstructs what matters now and next: future schedule context, people prep, open loops, resurfacing, multi-agent memory, and careful X integration.</text>
+  <text x="64" y="658" class="tiny">The outward shape is trigger → collect → compose → deliver, backed by ranking, suppression, and state/audit. Morning/evening and event-driven behavior are different entry conditions into the same pipeline.</text>
 </svg>

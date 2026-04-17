@@ -30,5 +30,7 @@ If you want the shortest path:
 
 ## Why this doc set exists
 
-The repository was refreshed from a digest-centric planning set into a unified trigger-driven architecture.
-Morning and evening editions are now modeled as scheduled trigger profiles inside the same system that also handles proactive event triggers such as location arrival, dwell, calendar proximity, inbound mail, shopping/replenishment, and trigger self-review.
+The repository is now positioned as a Hermes-first briefing pipeline.
+Morning and evening editions are treated as scheduled trigger profiles inside the same system that also handles proactive event triggers such as location arrival, dwell, calendar proximity, inbound mail, shopping/replenishment, and trigger self-review.
+
+The internal structure remains portable, but the current implementation target is practical Hermes-first cron execution: trigger → collect → compose → deliver.

@@ -1,7 +1,7 @@
 {
-  "name": "personal-briefing-engine",
+  "name": "hermes-briefing-pipeline",
   "private": false,
   "version": "0.2.0",
-  "description": "Agent-agnostic personal operating briefing engine with unified scheduled and event-driven trigger architecture",
+  "description": "Hermes-first personal briefing pipeline for scheduled and proactive delivery",
   "license": "MIT"
 }
