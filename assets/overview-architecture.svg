@@ -32,18 +32,19 @@
   <text x="70" y="105" class="subtitle">Agent-agnostic personal operating briefing engine that unifies scheduled briefings and proactive event triggers.</text>
 
   <!-- Trigger family -->
-  <rect x="60" y="150" width="310" height="330" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
+  <rect x="60" y="150" width="310" height="360" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
   <text x="85" y="190" class="section">A. Trigger events</text>
   <rect x="85" y="215" width="260" height="65" class="card" fill="#0f172a" stroke="#22d3ee"/>
   <text x="105" y="245" class="label">Scheduled</text>
   <text x="105" y="268" class="small">digest.morning · digest.evening</text>
-  <rect x="85" y="295" width="260" height="110" class="card" fill="#0f172a" stroke="#22d3ee"/>
+  <rect x="85" y="295" width="260" height="140" class="card" fill="#0f172a" stroke="#22d3ee"/>
   <text x="105" y="325" class="label">Event-driven</text>
-  <text x="105" y="348" class="small">location.arrival / dwell</text>
-  <text x="105" y="370" class="small">calendar.leave_now · mail.operational</text>
-  <text x="105" y="392" class="small">shopping.replenishment</text>
-  <rect x="85" y="420" width="260" height="40" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="446" class="small">review.trigger_quality</text>
+  <text x="105" y="348" class="small">when movement settles down / arrival happens</text>
+  <text x="105" y="370" class="small">when a calendar event is getting close</text>
+  <text x="105" y="392" class="small">when it is time to leave / operational mail arrives</text>
+  <text x="105" y="414" class="small">when replenishment or repurchase is due</text>
+  <rect x="85" y="450" width="260" height="40" class="card" fill="#0f172a" stroke="#22d3ee"/>
+  <text x="105" y="476" class="small">review.trigger_quality</text>
 
   <!-- Sources -->
   <rect x="60" y="540" width="310" height="360" class="box" fill="rgba(30,41,59,0.4)" stroke="#94a3b8"/>
@@ -122,7 +123,7 @@
   <text x="490" y="869" class="tiny">• resurfacing of saved / forgotten but relevant context</text>
   <text x="930" y="825" class="tiny">• multi-agent memory from Hermes, ChatGPT, and Grok</text>
   <text x="930" y="847" class="tiny">• careful X integration without letting X dominate the product</text>
-  <text x="930" y="869" class="tiny">• proactive triggers beyond just morning and evening digests</text>
+  <text x="930" y="869" class="tiny">• proactive behavior not only for morning/evening digests, but also when movement settles or an event is getting close</text>
 
   <!-- arrows -->
   <path d="M 370 315 C 410 315, 420 260, 460 260" class="arrow"/>

@@ -7,7 +7,7 @@ Agent-agnostic personal operating briefing engine.
 This repository defines a unified architecture for two things that should not be designed separately:
 
 1. **scheduled briefings** such as morning and evening editions
-2. **event-driven proactive triggers** such as location arrival, dwell, leave-now warnings, operational mail, and replenishment reminders
+2. **event-driven proactive triggers** such as when movement settles down, when arrival is detected, when a calendar event is getting close, when it is time to leave, when operational mail arrives, and when replenishment reminders become actionable
 
 The project is intentionally **not Hermes-only**. Hermes Agent is one strong runtime example, but the core design should also work as a standalone daemon/CLI or under other agent runtimes.
 
