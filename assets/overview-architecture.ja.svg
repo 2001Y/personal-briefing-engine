@@ -31,18 +31,19 @@
   <text x="70" y="70" class="title">personal-briefing-engine</text>
   <text x="70" y="105" class="subtitle">朝刊夕刊の定期ブリーフィングと proactive event trigger を、agent 非依存の 1 本の流れで統合する構想。</text>
 
-  <rect x="60" y="150" width="310" height="330" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
+  <rect x="60" y="150" width="310" height="360" class="box" fill="rgba(8,51,68,0.35)" stroke="#22d3ee"/>
   <text x="85" y="190" class="section">A. トリガーイベント</text>
   <rect x="85" y="215" width="260" height="65" class="card" fill="#0f172a" stroke="#22d3ee"/>
   <text x="105" y="245" class="label">定期トリガー</text>
   <text x="105" y="268" class="small">digest.morning ・ digest.evening</text>
-  <rect x="85" y="295" width="260" height="110" class="card" fill="#0f172a" stroke="#22d3ee"/>
+  <rect x="85" y="295" width="260" height="140" class="card" fill="#0f172a" stroke="#22d3ee"/>
   <text x="105" y="325" class="label">イベント駆動</text>
-  <text x="105" y="348" class="small">location.arrival / dwell</text>
-  <text x="105" y="370" class="small">calendar.leave_now ・ mail.operational</text>
-  <text x="105" y="392" class="small">shopping.replenishment</text>
-  <rect x="85" y="420" width="260" height="40" class="card" fill="#0f172a" stroke="#22d3ee"/>
-  <text x="105" y="446" class="small">review.trigger_quality</text>
+  <text x="105" y="348" class="small">移動が落ち着いた時 ・ 到着した時</text>
+  <text x="105" y="370" class="small">カレンダー予定が近づいた時</text>
+  <text x="105" y="392" class="small">出発時刻が来た時 ・ 運用メール到着時</text>
+  <text x="105" y="414" class="small">補充購入が必要になった時</text>
+  <rect x="85" y="450" width="260" height="40" class="card" fill="#0f172a" stroke="#22d3ee"/>
+  <text x="105" y="476" class="small">review.trigger_quality</text>
 
   <rect x="60" y="540" width="310" height="360" class="box" fill="rgba(30,41,59,0.4)" stroke="#94a3b8"/>
   <text x="85" y="580" class="section">B. 情報ソース群</text>
@@ -114,7 +115,7 @@
   <text x="490" y="874" class="tiny">• 忘れていたが今 relevant な bookmark / like / memory を resurfacing する</text>
   <text x="930" y="830" class="tiny">• Hermes / ChatGPT / Grok をまたいだ multi-agent memory を扱う</text>
   <text x="930" y="852" class="tiny">• X は重要だが支配的にはせず、 relevance と quota で丁寧に扱う</text>
-  <text x="930" y="874" class="tiny">• 朝夕の定期 digest だけでなく、arrival / leave-now / mail / replenishment でも動く</text>
+  <text x="930" y="874" class="tiny">• 朝夕の定期 digest だけでなく、移動が落ち着いた時や予定が近づいた時にも動く</text>
 
   <path d="M 370 315 C 410 315, 420 260, 460 260" class="arrow"/>
   <path d="M 370 720 C 410 720, 420 520, 460 520" class="arrow"/>
