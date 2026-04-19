@@ -1,7 +1,7 @@
 {
-  "name": "hermes-briefing-pipeline",
+  "name": "hermes-pulse",
   "private": false,
-  "version": "0.2.0",
-  "description": "Hermes-first personal briefing pipeline for scheduled and proactive delivery",
+  "version": "0.3.0",
+  "description": "Hermes Pulse — Hermes-first source-rigorous briefing and expert-depth operating pipeline",
   "license": "MIT"
 }

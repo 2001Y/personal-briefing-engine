@@ -2,61 +2,44 @@
 
 ## Principle
 
-Time-of-day triggers and event-driven triggers should coexist in one registry.
-The system should not care whether a trigger came from cron, polling, or webhook once it becomes a `TriggerEvent`.
+Time-of-day triggers, feed-driven triggers, and event-driven triggers should coexist in one registry.
+The system should not care whether a trigger came from cron, RSS polling, generic polling, or webhook once it becomes a `TriggerEvent`.
 
 ## Trigger categories
 
 ### 1. Scheduled digests
 These are broad-scope triggers.
-
 - `digest.morning`
 - `digest.evening`
 
+### 2. Feed / source update triggers
+These represent changes detected from curated source registries.
+- `feed.update`
+- later: `registry.priority_update`
+
 Characteristics:
-- wide collection scope
-- multi-section output
-- larger quota
-- lower action aggressiveness by default
+- narrow-to-medium collection scope
+- source-rigorous retrieval from known registries
+- can escalate from short update to deep brief
+- should prefer primary confirmation before strong claims
 
-### 2. Operational event triggers
+### 3. Operational event triggers
 These are narrow, high-intent triggers.
-
 - `calendar.leave_now`
 - `calendar.gap_window`
 - `mail.operational`
 - `shopping.replenishment`
 
-Characteristics:
-- tight collection scope
-- short output
-- higher urgency
-- can escalate to action preparation
-
-### 3. Context / location triggers
+### 4. Context / location triggers
 These use movement or place change as the trigger substrate.
-
 - `location.area_change`
 - `location.arrival`
 - `location.dwell`
 - later: `location.routine_break`
 
-Example use cases:
-- nearby saved restaurant reminder
-- sightseeing / detour ideas
-- arrival-aware prep before the next appointment
-- location-aware replenishment or pickup suggestions
-
-### 4. Self-review triggers
+### 5. Self-review triggers
 These improve the system itself.
-
 - `review.trigger_quality`
-
-This trigger inspects logs and asks:
-- which triggers were useful?
-- which were noisy?
-- which were late or early?
-- which should be retuned or suppressed?
 
 ## Practical trigger catalog
 
@@ -64,13 +47,12 @@ This trigger inspects logs and asks:
 |---|---|---|---|
 | `digest.morning` | prep for the day | `digest` | 1 |
 | `digest.evening` | closure and carry-over | `digest` | 1 |
+| `feed.update` | detect meaningful new information from curated sources | `nudge`, `deep_brief`, or `source_audit` | 1 |
 | `location.arrival` | detect likely arrival | `mini_digest` or `nudge` | 1 |
-| `location.dwell` | detect meaningful staying time | `mini_digest` | 1 |
 | `calendar.leave_now` | lateness prevention | `warning` | 1 |
-| `calendar.gap_window` | opportunistic suggestions before next event | `mini_digest` | 1 |
 | `mail.operational` | react to reservation/delivery/change | `warning` or `action_prep` | 2 |
 | `shopping.replenishment` | repurchase / refill / restock | `action_prep` | 2 |
-| `review.trigger_quality` | self-improvement | `summary_for_review` | 0 |
+| `review.trigger_quality` | self-improvement | `source_audit` | 0 |
 
 ## TriggerProfile examples
 
@@ -84,58 +66,35 @@ This trigger inspects logs and asks:
   "outputMode": "digest",
   "actionCeiling": 1,
   "cooldownMinutes": 360,
-  "quotas": { "x_items": 3, "resurface_items": 3, "people_bundles": 2 }
+  "quotas": { "feed_items": 3, "resurface_items": 3, "people_bundles": 2 }
 }
 ```
 
-### Leave-now
+### Feed update
 ```json
 {
-  "id": "calendar.leave_now.default",
+  "id": "feed.update.default",
   "family": "event",
-  "eventType": "calendar.leave_now",
-  "collectionPreset": "narrow_leave_now",
-  "outputMode": "warning",
+  "eventType": "feed.update",
+  "collectionPreset": "known_source_delta",
+  "outputMode": "nudge",
   "actionCeiling": 1,
-  "cooldownMinutes": 20
+  "cooldownMinutes": 60
 }
 ```
 
-### Replenishment
+### Deep brief escalation
 ```json
 {
-  "id": "shopping.replenishment.default",
+  "id": "feed.update.expert_depth",
   "family": "event",
-  "eventType": "shopping.replenishment",
-  "collectionPreset": "shopping_context",
-  "outputMode": "action_prep",
-  "actionCeiling": 2,
-  "cooldownMinutes": 1440
+  "eventType": "feed.update",
+  "collectionPreset": "known_source_deep_dive",
+  "outputMode": "deep_brief",
+  "actionCeiling": 1,
+  "cooldownMinutes": 240
 }
 ```
-
-## Location triggers: v1 heuristics
-
-A simple arrival heuristic is enough for v1.
-For example:
-- moved more than ~800m
-- recent average speed fell from travel speed to low speed
-- current area stayed roughly stable for 8-15 minutes
-
-This is enough to infer “likely arrived somewhere” without overbuilding a location intelligence subsystem.
-
-## Mail triggers: v1 interpretation
-
-Only operational mail should trigger immediate behavior.
-Examples:
-- reservation confirmation/change
-- delivery notification
-- payment issue
-- calendar invite / reschedule
-- commerce / subscription events
-
-Generic newsletters should not be an event trigger.
-They may still feed digest content if relevant.
 
 ## Trigger coexistence rules
 
@@ -143,8 +102,13 @@ They may still feed digest content if relevant.
 Morning/evening provide broad coherence.
 Event triggers provide timeliness.
 
-### Event triggers do not eliminate digest carry-over
-If something was already alerted by an event trigger but remains open, it may reappear later inside digest follow-up sections.
+### Feed triggers do not imply news-only behavior
+The same mechanism should support:
+- official product updates
+- research lab posts
+- standards / regulatory changes
+- domain-specialist media updates
+- trusted expert blogs
 
 ### Trigger-specific suppression is mandatory
 Global dedupe is insufficient.
@@ -154,6 +118,7 @@ Suppression should consider:
 - still-open status
 - cooldown window
 - delivery outcome
+- whether a higher-authority source later superseded a lower-authority one
 
 ## Self-improvement loop
 
@@ -163,9 +128,11 @@ Suppression should consider:
 - repeated false positives
 - time-to-usefulness
 - trigger overlap
+- source authority success/failure patterns
 
 Outputs should be suggestions like:
 - raise dwell threshold
 - lower leave-now buffer
-- reduce X quota in evening
-- suppress shopping reminders for 7 days after dismissal
+- shrink weak feed quotas
+- upgrade a registry source from trusted secondary to discovery only
+- require stronger primary confirmation before escalation

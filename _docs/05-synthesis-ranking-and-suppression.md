@@ -3,17 +3,19 @@
 ## Purpose
 
 Collection only gathers evidence.
-This stage decides what actually deserves attention.
+This stage decides what actually deserves attention and how deep the system should go.
 
 ## Core operations
 
 1. normalize source items
 2. link by people, time, place, topic, and unresolved status
-3. form bundles
-4. create candidates
-5. score candidates
-6. apply quotas
-7. suppress duplicates/noise/recent repeats
+3. resolve source authority and citation chain
+4. form bundles
+5. create candidates
+6. score candidates
+7. decide output depth
+8. apply quotas
+9. suppress duplicates/noise/recent repeats
 
 ## Bundle types
 
@@ -47,15 +49,41 @@ Combines:
 - nearby saved places
 - local suggestions when the trigger justifies them
 
+### Source-rigor bundle
+Combines:
+- primary source
+- trusted secondary commentary
+- relevant supporting docs / changelogs / repos
+- unresolved claims that still need confirmation
+
 ## Ranking signals
 
-Global ranking should prefer:
+Global ranking should generally prefer:
 1. future relevance
 2. people overlap with upcoming events
 3. open-loop urgency
 4. explicit user-intent signal
-5. recency / novelty
-6. passive signal strength
+5. source authority and primary confirmation
+6. recency / novelty
+7. passive signal strength
+
+## Depth escalation
+
+Do not force every topic into one summary shape.
+Escalate depth when at least one is true:
+- the topic is critical to a near-future decision
+- the source is authoritative and materially changes understanding
+- the user historically cares deeply about the domain
+- multiple strong sources disagree and need synthesis
+- the trigger explicitly requests deeper explanation
+
+Typical mapping:
+- simple awareness -> `nudge`
+- scheduled relevance -> `digest`
+- urgent operational change -> `warning`
+- action-adjacent next step -> `action_prep`
+- high-value domain update or deep investigation -> `deep_brief`
+- source trust / claim verification summary -> `source_audit`
 
 ## X-specific ranking rules
 
@@ -76,10 +104,24 @@ Quotas prevent the product from becoming a feed dump.
 Suggested v1 defaults:
 - morning total candidates rendered: 6-10
 - evening total candidates rendered: 6-10
-- X-specific visible items: 0-3
+- feed-specific visible items: 0-3 unless the trigger is feed-focused
 - resurfacing items: 1-3
 - people bundles: up to 2
+- deep briefs: usually 0-1
 - warnings: usually 1
+
+## Source authority policy in ranking
+
+Useful authority tiers:
+- `primary`
+- `trusted_secondary`
+- `discovery_only`
+
+High-confidence claims should prefer:
+- directly collected primary evidence
+- or trusted secondary sources that have been resolved to primary evidence
+
+Discovery-only items can still be useful, but should not dominate outputs or appear as fully trusted conclusions.
 
 ## Resurfacing policy
 
@@ -106,6 +148,7 @@ Use dimensions such as:
 - still-open status
 - suppression reason
 - cooldown expiry
+- source authority supersession
 
 Example reasons:
 - already delivered in same trigger family
@@ -113,6 +156,7 @@ Example reasons:
 - recently dismissed
 - too weak after ranking cutoff
 - duplicate of stronger candidate bundle
+- superseded by higher-authority source
 
 ## Carry-over behavior
 
@@ -130,8 +174,10 @@ score =
   peopleOverlap * w2 +
   openLoopUrgency * w3 +
   explicitIntent * w4 +
-  novelty * w5 +
-  sourceConfidence * w6 -
+  authorityStrength * w5 +
+  primaryConfirmation * w6 +
+  novelty * w7 +
+  userDepthFit * w8 -
   suppressionPenalty -
   alreadyDeliveredPenalty
 ```
@@ -142,5 +188,6 @@ The synthesis layer is the main guardrail against product drift.
 If this layer is weak, the product degenerates into:
 - a feed reader
 - a mail summarizer
+- an unverified search summary
 - an X recap
 - or an over-notifying proactive bot

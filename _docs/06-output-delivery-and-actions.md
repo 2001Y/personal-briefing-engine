@@ -18,10 +18,22 @@ A low-urgency suggestion that is worth surfacing but not demanding.
 
 ### `action_prep`
 An execution-adjacent output that prepares a side effect but stops before approval-required completion.
-Examples:
-- prefilled purchase candidate
-- draft reservation flow
-- draft reply / draft reminder
+
+### `deep_brief`
+A domain-aware, expert-depth synthesis used when a topic deserves more than a shallow summary.
+It should include:
+- key claim
+- why it matters
+- source ladder
+- unresolved questions
+- concise explanation tuned to the user's understanding
+
+### `source_audit`
+A source-focused output that explains:
+- what the primary source is
+- what remains secondary/tertiary
+- what was confirmed
+- what is still uncertain
 
 ## Morning digest structure
 
@@ -31,13 +43,7 @@ Suggested sections:
 - `incoming`
 - `followup`
 - `resurface`
-- optional `x_now` if relevant and within quota
-
-Morning output should optimize for:
-- preparation
-- prioritization
-- open-loop triage
-- contextual recall before meetings
+- optional `feed_updates` when relevant and within quota
 
 ## Evening digest structure
 
@@ -48,19 +54,13 @@ Suggested sections:
 - `tonight`
 - `resurface`
 
-Evening output should optimize for:
-- closure
-- carry-over
-- tomorrow prep
-- low-pressure reading / resurfacing
-
 ## Event-driven outputs
 
-### Location arrival / dwell
+### Feed update
 Good shapes:
-- short nearby saved-place reminder
-- mini context pack before next event
-- a few high-signal suggestions when time window allows
+- short update when relevance is clear and scope is small
+- `deep_brief` when the update is important and needs deeper synthesis
+- `source_audit` when authority/verification itself is the main issue
 
 ### Leave-now
 Good shape:
@@ -75,13 +75,6 @@ Good shape:
 - why it matters today
 - immediate next step if any
 
-### Shopping / replenishment
-Good shape:
-- what item is likely needed
-- why now
-- last evidence
-- draft action path up to approval boundary
-
 ## Execution levels
 
 ### Level 0
@@ -92,17 +85,9 @@ Send information / suggestions only.
 
 ### Level 2
 Prepare action artifacts without finalizing.
-Examples:
-- draft cart
-- draft reservation page opened
-- draft message prepared
 
 ### Level 3
 Perform side effect after user approval.
-Examples:
-- purchase
-- reservation confirmation
-- sending a message or email
 
 ## Approval gate
 
@@ -126,7 +111,8 @@ Potential adapters:
 ## Formatting rule
 
 The same candidate bundle may be rendered differently depending on output mode.
-A leave-now warning should not look like a morning digest section.
+A source audit should not look like a morning digest section.
+A deep brief should not look like a leave-now warning.
 That is why rendering belongs after synthesis, not before it.
 
 ## Key product stance
@@ -135,4 +121,5 @@ Do not over-notify.
 The system wins when the user feels:
 - “that was the right moment”
 - “that was exactly enough context”
+- “that was grounded in the best available source”
 not when it shows all available evidence.

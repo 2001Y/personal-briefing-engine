@@ -5,6 +5,7 @@
 Without explicit state, the system will:
 - redeliver the same things
 - miss incremental changes
+- lose track of source authority
 - be impossible to debug
 - be unable to improve trigger quality
 
@@ -21,6 +22,16 @@ Per connector / source stream:
 - last cursor / history ID
 - last successful sync
 - last error metadata
+
+### Source registry state
+For feed and known-source registries:
+- registry entry ID
+- last poll time
+- etag / last-modified where available
+- last seen item IDs
+- last promoted item IDs
+- authority tier snapshot
+- quality / trust review notes
 
 ### Imported artifact registry
 For exports, share links, and manual imports:
@@ -47,6 +58,7 @@ Track:
 - reason
 - cooldown expiry
 - dismissal status
+- superseded-by-higher-authority flag
 
 ### Approval / action log
 Track:
@@ -60,6 +72,7 @@ Track:
 - trigger event
 - selected collection preset
 - connectors touched
+- source registries touched
 - candidate counts
 - final output mode
 - runtime metrics
@@ -70,6 +83,16 @@ Track:
 - accepted suggestions
 - ignored alerts if measurable
 - future trigger tuning suggestions
+- source quality feedback where relevant
+
+## Citation-chain state
+
+For items whose trust depends on source resolution, keep:
+- primary source URL
+- secondary source URL if used
+- confirmation status
+- confirmation timestamp
+- unresolved-claim markers
 
 ## X-specific state
 
@@ -79,8 +102,6 @@ Per X source (`home`, `bookmarks`, `likes`) keep:
 - `seen_ids` with TTL/LRU behavior
 - `last_snapshot_ids`
 - `delivered_ids`
-
-This is required because home timeline diff is not a simple append-only cursor problem.
 
 ## Minimal schema sketch
 
@@ -103,6 +124,15 @@ create table connector_cursors (
   last_error text
 );
 
+create table source_registry_state (
+  registry_id text primary key,
+  last_poll_at text,
+  last_seen_item_ids text,
+  last_promoted_item_ids text,
+  authority_tier text,
+  notes text
+);
+
 create table imported_artifacts (
   artifact_id text primary key,
   provider text not null,
@@ -119,27 +149,19 @@ create table deliveries (
   delivered_at text not null,
   status text not null
 );
-
-create table suppression_log (
-  suppression_id text primary key,
-  subject_id text not null,
-  trigger_family text,
-  reason text not null,
-  cooldown_until text,
-  created_at text not null
-);
 ```
 
 ## Privacy and retention
 
-Because the system touches personal data, make retention explicit.
+Because the system touches personal and externally sourced data, make retention explicit.
 At minimum define:
 - what raw artifacts are stored
 - how long state is retained
 - which sources are re-fetchable vs archived
 - whether imported conversation artifacts can be deleted while preserving normalized derivatives
+- whether source registry state keeps only IDs or raw content too
 
 ## Audit payoff
 
-This layer is what makes `review.trigger_quality` possible.
-If a trigger was noisy, late, redundant, or useful, the evidence should come from audit state rather than memory or guesswork.
+This layer is what makes `review.trigger_quality` and `source_audit` possible.
+If a trigger was noisy, late, redundant, useful, or weakly sourced, the evidence should come from audit state rather than memory or guesswork.

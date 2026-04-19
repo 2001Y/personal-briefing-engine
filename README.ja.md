@@ -1,34 +1,35 @@
-# hermes-briefing-pipeline
+# Hermes Pulse
 
 日本語版README / [English README](./README.md)
 
-Hermes-first の personal briefing pipeline です。
+Hermes Pulse は、Hermes-first で、source-rigorous な personal briefing / operating pipeline です。定期配信にも proactive 配信にも対応し、必要なら専門家レベルまで深掘りできることを目指します。
 
 このリポジトリは、次の 4 ステップを中心に構成します。
 
-1. **Trigger** — cron などのトリガーで実行を開始する
-2. **Collect** — そのトリガーに必要な source だけを収集する
-3. **Compose** — 文脈を briefing / reply draft / warning / nudge にまとめる
-4. **Deliver** — 選んだチャネルへ配信する
+1. **Trigger** — cron、feed 更新、polling、webhook、manual run などで実行を開始する
+2. **Collect** — その trigger に必要な source だけを収集し、可能なら generic web search より先に known-source retrieval を使う
+3. **Compose** — 文脈を briefing / warning / reply draft / expert-depth analysis / action prep にまとめる
+4. **Deliver** — 選んだチャネルへ配信するか、次の action 準備まで進める
 
-現時点での主対象 runtime は **Hermes Agent** です。将来的には OpenClaw、Codex、Claude Code、standalone runtime + skill / MCP へ広げられる余地がありますが、このリポジトリはまず Hermes 向けとして最適化します。
+現時点での主対象 runtime は **Hermes Agent** です。将来的には standalone runtime や他の agent 環境へ広げる余地がありますが、このリポジトリはまず Hermes 向けとして最適化します。
 
 ## 全体像
 
-![hermes-briefing-pipeline 全体像](./assets/overview-architecture.ja.svg)
+![Hermes Pulse 全体像](./assets/overview-architecture.ja.svg)
 
 ## このリポジトリがやること
 
-これは単なる AI ニュース要約アプリではありません。
-Hermes-first で個人向け briefing と proactive 通知を扱うためのパイプラインです。
+これは AI ニュース専用のプロダクトではありません。
+汎用的な operating briefing engine だが、分野・緊急度・ユーザー理解度に応じて浅くも深くも動ける構造を目指します。
 答えるべき問いは次です。
 
 - 今、何が重要か？
 - このあと今日の中で何が重要か？
-- 次に会う人について、何を思い出すべきか？
-- 外部で何が変わったか、そのうち本当に relevant なのは何か？
+- どの外部変化が、単なる観測ではなく action を要するか？
 - 忘れていたもののうち、今 resurfacing すべきものは何か？
+- どの source が authoritative で trust できるか？
 - ユーザーが指示する前に、どの瞬間なら proactive に動く価値があるか？
+- 簡潔な報告で十分なのか、専門家レベルの深い synthesis に上げるべきか？
 
 ## コアフロー
 
@@ -40,42 +41,52 @@ runtime としての見え方は、意図的にシンプルです。
 例:
 - `digest.morning`
 - `digest.evening`
-- `review.trigger_quality`
-- `location.arrival`
-- `location.dwell`
+- `feed.update`
 - `calendar.leave_now`
 - `mail.operational`
+- `location.arrival`
 - `shopping.replenishment`
+- `review.trigger_quality`
 
 ### 2. Collect
 その trigger profile に必要な source だけを取りに行きます。
 
 source family:
 - Calendar / Gmail / email
-- Notes / docs
-- Maps / saved places
-- Location history（たとえば Dawarich）
+- Notes / docs / local knowledge
+- Maps / saved places / location history
 - Hermes Agent 会話履歴
 - ChatGPT / Grok の履歴（local / export / share / manual で取れる範囲）
 - X home timeline diff / bookmarks / likes
+- 公式ブログ、press room、changelog、research lab、分野特化メディア、専門家ブログなどの RSS / Atom feed
+- generic web search より固い探索基盤として使う known-source registry
+
+収集ポリシー:
+- primary source first
+- 可能なら generic search より前に known-source retrieval
+- secondary / tertiary source は discovery 補助には使うが、できるだけ primary evidence まで解決する
+- すべての collected item に provenance と citation chain を残す
 
 ### 3. Compose
-証拠を束ねて、 relevance を順位付けし、ノイズを抑え、適切な出力を作ります。
+証拠を束ねて relevance を順位付けし、ノイズを抑え、適切な出力を作ります。
 
 出力例:
 - digest
-- mini-digest
+- mini_digest
 - warning
 - nudge
-- action-prep
-- reply draft
+- action_prep
+- deep_brief
+- source_audit
+- reply_draft
 
 優先順位は原則として:
 - 未来 relevance
 - people overlap
 - open loops
-- saved intent
-- その後に external deltas
+- explicit user intent
+- source authority と primary confirmation
+- その後に external deltas や passive signals
 
 X の内部では:
 - `bookmark > like > home timeline diff`
@@ -85,38 +96,31 @@ X の内部では:
 
 初期の配信先:
 - Hermes Agent の cron 実行
-- Hermes の delivery path を通した Slack / Telegram / local files
+- Hermes の delivery path を通した Slack / Telegram / local files / email summary
 
 ## なぜ Hermes-first なのか
 
-この repo は以前、agent-agnostic architecture を前面に出していました。
-その portability 自体は残しますが、入口の主語はそこではありません。
+この repo は以前、抽象的な briefing pipeline を前面に出していました。
+portability 自体は残しますが、入口の主語はそこではありません。
 
 現時点の実用上の主対象は:
 - **runtime:** Hermes Agent
-- **scheduler:** cron ベース
+- **scheduler:** cron ベース + event trigger
 - **形:** trigger → collect → compose → deliver
 - **目的:** ユーザーの次の瞬間に実際に役立つ briefing / proactive 通知
-
-## 将来の portability
-
-内部モデルは持ち運べる形を維持します。
-将来的には次にも広げられます。
-- OpenClaw
-- Codex + skill + MCP
-- Claude Code + skill + MCP
-- standalone daemon / CLI
-
-ただし、それらは今の主訴求ではなく、後続ターゲットです。
 
 ## 設計原則
 
 - **Hermes-first runtime target**
+- **ドメイン非依存だが expert-depth 可能**
+- **primary-source-first retrieval**
+- **可能なら generic search より先に known-source retrieval**
 - **最小レイヤー**: microservice zoo にしない
-- **live retrieval first**
+- **現実に成立する範囲では live retrieval first**
 - **単純な canonical data model**
-- **import / 非live source に対する強い provenance**
+- **import / 非live source に対する強い provenance と citation chain**
 - **user-intent signal は passive signal より強く扱う**
+- **depth はユーザー理解度と task に応じて調整する**
 - **LLM は圧縮と説明を担うが、source truth の代替ではない**
 
 ## docs 一覧
@@ -129,11 +133,12 @@ X の内部では:
 - [`_docs/05-synthesis-ranking-and-suppression.md`](./_docs/05-synthesis-ranking-and-suppression.md)
 - [`_docs/06-output-delivery-and-actions.md`](./_docs/06-output-delivery-and-actions.md)
 - [`_docs/07-state-memory-and-audit.md`](./_docs/07-state-memory-and-audit.md)
-- [`_docs/source-notes/x.md`](./_docs/source-notes/x.md)
-- [`_docs/source-notes/conversation-history.md`](./_docs/source-notes/conversation-history.md)
 - [`_docs/08-roadmap.md`](./_docs/08-roadmap.md)
 - [`_docs/09-migration-from-legacy.md`](./_docs/09-migration-from-legacy.md)
 - [`_docs/10-appendix-legacy-research.md`](./_docs/10-appendix-legacy-research.md)
+- [`_docs/source-notes/conversation-history.md`](./_docs/source-notes/conversation-history.md)
+- [`_docs/source-notes/feeds-and-source-registry.md`](./_docs/source-notes/feeds-and-source-registry.md)
+- [`_docs/source-notes/x.md`](./_docs/source-notes/x.md)
 
 ## 現在の状態
 
@@ -141,6 +146,7 @@ X の内部では:
 主に記述しているのは:
 - Hermes-first の system model
 - source acquisition の制約
+- feed / source registry の考え方
 - ranking / suppression policy
 - delivery / approval のパターン
 - state / audit 要件

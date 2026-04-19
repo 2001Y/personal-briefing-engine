@@ -3,18 +3,21 @@
 ## Principle
 
 The current target is **Hermes-first**, but the connector model should remain portable.
-Connector design must be driven by acquisition reality, not by branding.
+Connector design must be driven by acquisition reality and source rigor, not by branding or convenience.
 
 ## Acquisition modes
 
 - `local_store`
 - `official_api`
 - `official_export`
+- `rss_poll`
+- `atom_poll`
+- `known_source_search`
 - `share_link_import`
 - `manual_import`
 - `browser_automation_experimental`
 
-These modes are important because many user-facing AI products do not expose clean read APIs for personal history.
+These modes matter because many user-facing systems do not expose equally trustworthy or equally stable read paths.
 
 ## Connector contract
 
@@ -29,6 +32,22 @@ export interface Connector {
 }
 ```
 
+## Source registry contract
+
+Every durable source should be representable in a registry entry.
+
+A registry entry should capture:
+- domain
+- source family
+- authority tier
+- rss/atom endpoint where applicable
+- search hints
+- topic scopes
+- whether primary confirmation is mandatory
+
+This registry is not just for feeds.
+It is also the substrate for retrieval that is more reliable than generic open web search.
+
 ## Collection presets
 
 A trigger should not always collect everything.
@@ -39,12 +58,24 @@ Use named collection presets such as:
 - `shopping_context`
 - `location_context`
 - `mail_operational`
+- `known_source_delta`
+- `known_source_deep_dive`
 
 Each preset defines:
 - which connectors are eligible
+- which source registries are eligible
 - time windows
 - fetch depth
 - quota before synthesis
+- whether generic web search is allowed and at what stage
+
+## Primary-source-first policy
+
+The baseline rule across all domains is:
+1. use the lowest-layer authoritative source that is realistically available
+2. use secondary sources for discovery, framing, or triangulation
+3. when a secondary source cites a primary source, collect the primary source too when practical
+4. do not let tertiary summaries stand alone for high-confidence claims
 
 ## Provenance requirement
 
@@ -55,6 +86,7 @@ This is mandatory for:
 - re-normalization
 - connector-specific bug fixing
 - privacy review
+- source audits
 
 ## Connector readiness matrix
 
@@ -69,62 +101,41 @@ This is mandatory for:
 | X home timeline | official API if available; otherwise constrained fallback | high-value but noisy delta source |
 | X bookmarks | official API | stronger explicit intent than likes/home |
 | X likes | official API | weaker but still useful memory signal |
+| RSS / Atom source registries | `rss_poll` / `atom_poll` | reliable first-line monitoring for official and specialist sources |
+| Known-source domain registries | `known_source_search` | more reliable retrieval substrate than generic search when curated well |
 | Maps saved places | export/API later | valuable for place-aware triggers |
 | Location history (e.g. Dawarich) | local/API | strong proactive trigger substrate |
 
-## Hermes Agent history
+## RSS / feed registries
 
-Preferred path:
-- local SQLite / local session store / CLI / export path
+The system should support curated feed lists for:
+- official blog/newsroom feeds
+- changelogs and release feeds
+- research labs
+- standards bodies / regulatory updates where available
+- domain-specialist media
+- trusted expert third-party blogs
 
-Why it matters:
-- strongest access
-- easiest provenance
-- good unresolved-topic extraction
+These feeds should be grouped by domain and by authority tier.
 
-Normalization targets:
-- title
-- timestamps
-- participants if derivable
-- topic/entity hints
-- unresolved/open-loop signal
+## Known-source retrieval before generic search
 
-## ChatGPT history
+When the system needs current external knowledge, the preferred order is:
+1. explicit local source / artifact
+2. known source registry / feed registry
+3. direct primary-source resolution from known domains
+4. generic web search
 
-Reality constraint:
-there is no clean, standard, always-on consumer history read API suitable for a normal integration path.
-
-Therefore v1 should be honest:
-- ZIP export import first
-- manual transcript import second
-- share-link import when practical
-- browser automation only as experimental opt-in
-
-## Grok history
-
-Treat Grok similarly.
-Do not confuse API persistence for API-created runs with clean access to consumer chat history.
-
-v1 should prefer:
-- manual transcript import
-- share-link import
-- optional verified export path later
-
-## X family
-
-Model X as three sub-connectors under one auth surface:
-- `x_home_timeline`
-- `x_bookmarks`
-- `x_likes`
-
-All normalize into a common post shape but preserve source provenance and intent strength.
+This does not eliminate web search.
+It makes web search a fallback or expansion layer rather than the first and only retrieval method.
 
 ## Live retrieval vs imported artifacts
 
 ### Prefer live retrieval when:
 - timing matters now
-- stateful diffing is required
 - the source is operational
+- stateful diffing is required
+- the source path is authoritative and stable
 
 ### Prefer artifact import when:
 - the source does not support stable live access
@@ -138,5 +149,6 @@ Do not over-normalize too early.
 The goal is to support:
 - repeatable normalization
 - provenance
+- citation-chain recovery
 - light reprocessing
 without committing to a huge warehousing scheme in v1.
