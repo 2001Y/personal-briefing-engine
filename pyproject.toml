@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hermes-pulse"
+version = "0.1.0"
+description = "Hermes Pulse runtime"
+requires-python = ">=3.11"
+
+[project.scripts]
+hermes-pulse = "hermes_pulse.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
