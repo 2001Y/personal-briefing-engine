@@ -1,0 +1,39 @@
+sources:
+  - id: official-blog
+    source_family: company_updates
+    domain: example.com
+    title: Example Official Blog
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://example.com/feed.xml
+    search_hints:
+      - site:example.com official updates
+    topical_scopes:
+      - product
+    language: en
+    requires_primary_confirmation: false
+  - id: trusted-secondary-blog
+    source_family: analyst_blog
+    domain: trusted.example.org
+    title: Trusted Secondary Blog
+    acquisition_mode: atom_poll
+    authority_tier: trusted_secondary
+    rss_url: https://trusted.example.org/atom.xml
+    search_hints:
+      - site:trusted.example.org analysis
+    topical_scopes:
+      - ecosystem
+    language: en
+    requires_primary_confirmation: true
+  - id: discovery-only-source
+    source_family: discovery_blog
+    domain: discover.example.net
+    title: Discovery Source
+    acquisition_mode: known_source_search
+    authority_tier: discovery_only
+    search_hints:
+      - site:discover.example.net rumors
+    topical_scopes:
+      - discovery
+    language: en
+    requires_primary_confirmation: true
