@@ -76,6 +76,7 @@ SCHEMA_STATEMENTS = (
         approval_boundary_reached INTEGER NOT NULL,
         user_decision TEXT NOT NULL,
         execution_result TEXT NOT NULL,
+        execution_details TEXT,
         recorded_at TEXT NOT NULL
     )
     """,
@@ -88,6 +89,12 @@ def initialize_database(path: str | Path) -> None:
     with sqlite3.connect(database_path) as connection:
         for statement in SCHEMA_STATEMENTS:
             connection.execute(statement)
+        approval_action_columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(approval_action_log)")
+        }
+        if "execution_details" not in approval_action_columns:
+            connection.execute("ALTER TABLE approval_action_log ADD COLUMN execution_details TEXT")
         connection.commit()
 
 
@@ -322,6 +329,7 @@ def record_approval_action(
     approval_boundary_reached: bool,
     user_decision: str,
     execution_result: str,
+    execution_details: str | None = None,
     recorded_at: str,
 ) -> str:
     database_path = Path(path)
@@ -338,9 +346,10 @@ def record_approval_action(
                 approval_boundary_reached,
                 user_decision,
                 execution_result,
+                execution_details,
                 recorded_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 action_id,
@@ -350,6 +359,7 @@ def record_approval_action(
                 1 if approval_boundary_reached else 0,
                 user_decision,
                 execution_result,
+                execution_details,
                 recorded_at,
             ),
         )
@@ -363,6 +373,7 @@ def update_approval_action(
     action_id: str,
     user_decision: str,
     execution_result: str,
+    execution_details: str | None = None,
     recorded_at: str,
 ) -> None:
     database_path = Path(path)
@@ -371,10 +382,10 @@ def update_approval_action(
         connection.execute(
             """
             UPDATE approval_action_log
-            SET user_decision = ?, execution_result = ?, recorded_at = ?
+            SET user_decision = ?, execution_result = ?, execution_details = ?, recorded_at = ?
             WHERE action_id = ?
             """,
-            (user_decision, execution_result, recorded_at, action_id),
+            (user_decision, execution_result, execution_details, recorded_at, action_id),
         )
         connection.commit()
 

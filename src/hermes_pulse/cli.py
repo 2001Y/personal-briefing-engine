@@ -95,6 +95,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-db", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--action-id")
+    parser.add_argument("--execution-receipt")
+    parser.add_argument("--execution-error")
     parser.add_argument("--now")
     parser.add_argument("--x-signals")
     return parser
@@ -111,7 +113,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command in {"approve-action", "reject-action", "complete-action", "failed-action"}:
         if args.state_db is None or not args.action_id:
             raise ValueError("action update commands require --state-db and --action-id")
-        _update_approval_action_from_command(args.state_db, action_id=args.action_id, command=args.command, occurred_at=occurred_at)
+        _update_approval_action_from_command(
+            args.state_db,
+            action_id=args.action_id,
+            command=args.command,
+            occurred_at=occurred_at,
+            execution_receipt=getattr(args, "execution_receipt", None),
+            execution_error=getattr(args, "execution_error", None),
+        )
         return 0
     if args.state_db is not None:
         profile = _profile_for_command(args.command)
@@ -456,7 +465,15 @@ def _record_approval_actions_from_items(path: Path, *, items: list[CollectedItem
     )
 
 
-def _update_approval_action_from_command(path: Path, *, action_id: str, command: str, occurred_at: str) -> None:
+def _update_approval_action_from_command(
+    path: Path,
+    *,
+    action_id: str,
+    command: str,
+    occurred_at: str,
+    execution_receipt: str | None = None,
+    execution_error: str | None = None,
+) -> None:
     action = get_approval_action(path, action_id=action_id)
     if action is None:
         raise ValueError("approval action not found")
@@ -465,11 +482,17 @@ def _update_approval_action_from_command(path: Path, *, action_id: str, command:
         if user_decision != "approved" or execution_result != "approved_pending_execution":
             raise ValueError("approval action is not awaiting execution completion")
         updated_execution_result = "executed" if command == "complete-action" else "failed"
+        execution_details = None
+        if command == "complete-action" and execution_receipt:
+            execution_details = json.dumps({"receipt": execution_receipt}, ensure_ascii=False)
+        if command == "failed-action" and execution_error:
+            execution_details = json.dumps({"error": execution_error}, ensure_ascii=False)
         update_approval_action(
             path,
             action_id=action_id,
             user_decision="approved",
             execution_result=updated_execution_result,
+            execution_details=execution_details,
             recorded_at=occurred_at,
         )
         return
@@ -481,6 +504,7 @@ def _update_approval_action_from_command(path: Path, *, action_id: str, command:
             action_id=action_id,
             user_decision="approved",
             execution_result="approved_pending_execution",
+            execution_details=None,
             recorded_at=occurred_at,
         )
         return
@@ -490,6 +514,7 @@ def _update_approval_action_from_command(path: Path, *, action_id: str, command:
             action_id=action_id,
             user_decision="rejected",
             execution_result="cancelled",
+            execution_details=None,
             recorded_at=occurred_at,
         )
         return

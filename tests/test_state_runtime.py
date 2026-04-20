@@ -434,7 +434,7 @@ def test_shopping_replenishment_records_approval_action_log(tmp_path: Path) -> N
 
     with sqlite3.connect(database_path) as connection:
         action_rows = connection.execute(
-            "SELECT action_kind, subject, approval_boundary_reached, user_decision, execution_result, recorded_at FROM approval_action_log"
+            "SELECT action_kind, subject, approval_boundary_reached, user_decision, execution_result, execution_details, recorded_at FROM approval_action_log"
         ).fetchall()
 
     assert action_rows == [
@@ -444,6 +444,7 @@ def test_shopping_replenishment_records_approval_action_log(tmp_path: Path) -> N
             1,
             "pending",
             "not_executed",
+            None,
             "2026-04-20T12:05:00Z",
         )
     ]
@@ -760,6 +761,8 @@ def test_complete_action_updates_approved_action_execution_result(tmp_path: Path
                 str(database_path),
                 "--action-id",
                 action_id,
+                "--execution-receipt",
+                "ordered via amazon",
                 "--now",
                 "2026-04-20T12:15:00Z",
             ]
@@ -769,11 +772,16 @@ def test_complete_action_updates_approved_action_execution_result(tmp_path: Path
 
     with sqlite3.connect(database_path) as connection:
         row = connection.execute(
-            "SELECT user_decision, execution_result, recorded_at FROM approval_action_log WHERE action_id = ?",
+            "SELECT user_decision, execution_result, execution_details, recorded_at FROM approval_action_log WHERE action_id = ?",
             (action_id,),
         ).fetchone()
 
-    assert row == ("approved", "executed", "2026-04-20T12:15:00Z")
+    assert row == (
+        "approved",
+        "executed",
+        '{"receipt": "ordered via amazon"}',
+        "2026-04-20T12:15:00Z",
+    )
 
 
 def test_complete_action_rejects_unknown_action_id(tmp_path: Path) -> None:
@@ -882,6 +890,8 @@ def test_failed_action_updates_approved_action_execution_result(tmp_path: Path) 
                 str(database_path),
                 "--action-id",
                 action_id,
+                "--execution-error",
+                "api timeout",
                 "--now",
                 "2026-04-20T12:20:00Z",
             ]
@@ -891,11 +901,16 @@ def test_failed_action_updates_approved_action_execution_result(tmp_path: Path) 
 
     with sqlite3.connect(database_path) as connection:
         row = connection.execute(
-            "SELECT user_decision, execution_result, recorded_at FROM approval_action_log WHERE action_id = ?",
+            "SELECT user_decision, execution_result, execution_details, recorded_at FROM approval_action_log WHERE action_id = ?",
             (action_id,),
         ).fetchone()
 
-    assert row == ("approved", "failed", "2026-04-20T12:20:00Z")
+    assert row == (
+        "approved",
+        "failed",
+        '{"error": "api timeout"}',
+        "2026-04-20T12:20:00Z",
+    )
 
 
 def test_failed_action_rejects_unknown_action_id(tmp_path: Path) -> None:
