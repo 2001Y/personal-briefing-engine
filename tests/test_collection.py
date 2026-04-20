@@ -231,6 +231,35 @@ def test_feed_update_invokes_feed_and_known_source_search_only() -> None:
     assert gmail.calls == 0
 
 
+def test_feed_update_expert_depth_invokes_feed_and_known_source_search_only() -> None:
+    profile = get_trigger_profile("feed.update.expert_depth")
+    trigger = TriggerEvent(
+        id="trigger-10",
+        type=profile.event_type,
+        profile_id=profile.id,
+        occurred_at="2026-04-21T09:00:00Z",
+        scope=TriggerScope(),
+    )
+    feed = StubConnector("feed_registry")
+    known_source_search = StubConnector("known_source_search")
+    notes = StubConnector("notes")
+
+    collected = collect_for_trigger(
+        trigger,
+        profile,
+        {
+            feed.id: feed,
+            known_source_search.id: known_source_search,
+            notes.id: notes,
+        },
+    )
+
+    assert collected == ["feed_registry", "known_source_search"]
+    assert feed.calls == 1
+    assert known_source_search.calls == 1
+    assert notes.calls == 0
+
+
 def test_location_arrival_invokes_location_connector_only() -> None:
     profile = get_trigger_profile("location.arrival.default")
     trigger = TriggerEvent(

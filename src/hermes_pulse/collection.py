@@ -27,6 +27,7 @@ COLLECTION_PRESETS = {
     "mail_operational": ["gmail"],
     "shopping_replenishment": ["notes"],
     "known_source_delta": ["feed_registry", "known_source_search"],
+    "known_source_deep_dive": ["feed_registry", "known_source_search"],
     "location_arrival": ["location_context"],
     "calendar_gap_window": ["google_calendar"],
     "trigger_quality_audit": ["audit_context"],

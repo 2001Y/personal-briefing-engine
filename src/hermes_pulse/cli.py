@@ -19,6 +19,8 @@ from hermes_pulse.delivery.local_markdown import LocalMarkdownDelivery
 from hermes_pulse.models import CollectedItem, TriggerEvent, TriggerScope
 from hermes_pulse.rendering import (
     render_feed_update_nudge,
+    render_feed_update_deep_brief,
+    render_feed_update_source_audit,
     render_gap_window_mini_digest,
     render_leave_now_warning,
     render_location_arrival_mini_digest,
@@ -58,6 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
             "location-arrival",
             "review-trigger-quality",
             "gap-window-mini-digest",
+            "feed-update-deep-brief",
+            "feed-update-source-audit",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -103,6 +107,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         markdown = _build_review_trigger_quality(args)
     elif args.command == "gap-window-mini-digest":
         markdown = _build_gap_window(args)
+    elif args.command == "feed-update-deep-brief":
+        markdown = _build_feed_update_deep_brief(args)
+    elif args.command == "feed-update-source-audit":
+        markdown = _build_feed_update_source_audit(args)
     else:
         return 0
 
@@ -150,6 +158,16 @@ def _build_gap_window(args: argparse.Namespace) -> str | None:
     items = _build_event_trigger_items("calendar.gap_window.default", args)
     now = _parse_timestamp(args.now) if args.now else datetime.now(timezone.utc)
     return render_gap_window_mini_digest(items, now=now)
+
+
+def _build_feed_update_deep_brief(args: argparse.Namespace) -> str | None:
+    items = _build_event_trigger_items("feed.update.expert_depth", args)
+    return render_feed_update_deep_brief(items)
+
+
+def _build_feed_update_source_audit(args: argparse.Namespace) -> str | None:
+    items = _build_event_trigger_items("feed.update.source_audit", args)
+    return render_feed_update_source_audit(items)
 
 
 def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> list[CollectedItem]:

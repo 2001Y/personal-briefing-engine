@@ -178,6 +178,63 @@ def render_gap_window_mini_digest(items: Iterable[CollectedItem], *, now: dateti
     return "\n".join(lines).rstrip() + "\n"
 
 
+def render_feed_update_deep_brief(items: Iterable[CollectedItem]) -> str | None:
+    item = _select_primary_feed_item(items)
+    if item is None:
+        return None
+    lines = [
+        "# Feed deep brief",
+        "",
+        f"- Key claim: {item.title or item.id}",
+        f"- Why it matters: {_single_line(item.excerpt) or 'Important update from a tracked source.'}",
+        "- Source ladder: primary source reviewed first, secondary discovery retained for context.",
+    ]
+    if item.url:
+        lines.append(f"- Primary source URL: {item.url}")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def render_feed_update_source_audit(items: Iterable[CollectedItem]) -> str | None:
+    candidates = [item for item in items if item.source_kind in {"feed_item", "document"}]
+    if not candidates:
+        return None
+    primary = _select_primary_feed_item(candidates)
+    secondary = next(
+        (
+            item
+            for item in candidates
+            if item is not primary and item.source_kind == "document"
+        ),
+        None,
+    )
+    if secondary is None:
+        secondary = next(
+            (
+                item
+                for item in candidates
+                if item is not primary
+                and (item.provenance is None or item.provenance.authority_tier != "primary")
+            ),
+            None,
+        )
+    if secondary is None:
+        secondary = next((item for item in candidates if item is not primary), None)
+    lines = ["# Feed source audit", ""]
+    if primary is not None:
+        lines.append(f"- Primary source: {primary.title or primary.id}")
+    if secondary is not None:
+        lines.append(f"- Secondary/discovery source: {secondary.title or secondary.id}")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _select_primary_feed_item(items: Iterable[CollectedItem]) -> CollectedItem | None:
+    candidates = [item for item in items if item.source_kind in {"feed_item", "document"}]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: (0 if item.provenance and item.provenance.authority_tier == "primary" else 1, item.id))
+    return candidates[0]
+
+
 def _render_section(
     section_name: str,
     candidates: list[Candidate],
