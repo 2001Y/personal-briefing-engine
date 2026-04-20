@@ -14,6 +14,11 @@ Without explicit state, the system will:
 Use a single local SQLite database for v1.
 Optionally keep raw imported artifacts on disk with references in SQLite.
 
+Current runtime status:
+- minimal schema exists in `src/hermes_pulse/db.py`
+- `codex-pulse --state-db /path/to/db.sqlite3 ...` now records trigger runs and local deliveries
+- connector cursors, suppression history, approval history, and feedback logs are still planned but not yet wired into runtime behavior
+
 ## Required state families
 
 ### Connector cursors
