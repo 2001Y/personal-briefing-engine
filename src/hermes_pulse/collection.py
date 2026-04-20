@@ -23,6 +23,7 @@ COLLECTION_PRESETS = {
         "hermes_history",
         "notes",
     ],
+    "calendar_leave_now": ["google_calendar"],
 }
 
 

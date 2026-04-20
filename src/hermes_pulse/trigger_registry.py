@@ -22,6 +22,15 @@ TRIGGER_REGISTRY = {
         cooldown_minutes=360,
         quotas={"feed_items": 3, "resurface_items": 3, "people_bundles": 2},
     ),
+    "calendar.leave_now.default": TriggerProfile(
+        id="calendar.leave_now.default",
+        family="event",
+        event_type="calendar.leave_now",
+        collection_preset="calendar_leave_now",
+        output_mode="warning",
+        action_ceiling=1,
+        cooldown_minutes=15,
+    ),
 }
 
 

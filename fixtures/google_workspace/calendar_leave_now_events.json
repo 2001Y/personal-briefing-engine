@@ -1,0 +1,24 @@
+[
+  {
+    "id": "event-soon",
+    "summary": "Airport drop-off",
+    "description": "Leave soon to avoid being late.",
+    "start": "2026-04-21T09:00:00Z",
+    "end": "2026-04-21T10:00:00Z",
+    "location": "Haneda Airport",
+    "htmlLink": "https://calendar.google.com/calendar/event?eid=event-soon",
+    "attendees": ["friend@example.com"],
+    "travel_minutes": 35
+  },
+  {
+    "id": "event-later",
+    "summary": "Lunch",
+    "description": "Not urgent yet.",
+    "start": "2026-04-21T13:00:00Z",
+    "end": "2026-04-21T14:00:00Z",
+    "location": "Cafe",
+    "htmlLink": "https://calendar.google.com/calendar/event?eid=event-later",
+    "attendees": [],
+    "travel_minutes": 10
+  }
+]

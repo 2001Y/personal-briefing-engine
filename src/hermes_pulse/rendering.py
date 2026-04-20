@@ -1,4 +1,5 @@
 from collections.abc import Iterable
+from datetime import datetime, timedelta, timezone
 from html import unescape
 import re
 
@@ -39,6 +40,27 @@ def render_morning_digest(
     if feed_updates:
         lines.extend(_render_section("feed_updates", feed_updates, items_by_id))
 
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def render_leave_now_warning(items: Iterable[CollectedItem], *, now: datetime) -> str | None:
+    candidate = _find_leave_now_candidate(items, now)
+    if candidate is None:
+        return None
+
+    item, departure_at, travel_minutes = candidate
+    start_at = item.timestamps.start_at if item.timestamps is not None else None
+    lines = [
+        "# Leave now",
+        "",
+        f"- Event: {item.title or item.id}",
+        f"- Starts at: {start_at}",
+        f"- Location: {item.metadata.get('location') or 'Unknown'}",
+        f"- Travel estimate: {travel_minutes} min",
+        f"- Recommended departure: {_format_timestamp(departure_at)}",
+    ]
+    if item.url:
+        lines.append(f"- Event URL: {item.url}")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -109,6 +131,31 @@ def _single_line(text: str | None) -> str | None:
 
     plain_text = _strip_html(text)
     return next((line.strip() for line in plain_text.splitlines() if line.strip()), None)
+
+
+def _find_leave_now_candidate(items: Iterable[CollectedItem], now: datetime) -> tuple[CollectedItem, datetime, int] | None:
+    best: tuple[CollectedItem, datetime, int] | None = None
+    for item in items:
+        if item.source != "google_calendar" or item.timestamps is None or not item.timestamps.start_at:
+            continue
+        travel_minutes = item.metadata.get("travel_minutes")
+        if not isinstance(travel_minutes, int):
+            continue
+        start_at = _parse_timestamp(item.timestamps.start_at)
+        departure_at = start_at - timedelta(minutes=travel_minutes)
+        if now < departure_at:
+            continue
+        if best is None or departure_at < best[1]:
+            best = (item, departure_at, travel_minutes)
+    return best
+
+
+def _format_timestamp(value: datetime) -> str:
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _parse_timestamp(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
 
 
 def _strip_html(text: str) -> str:

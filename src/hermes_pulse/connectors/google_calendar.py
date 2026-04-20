@@ -43,7 +43,7 @@ def _normalize_event(record: dict[str, Any]) -> CollectedItem:
             raw_record_id=event_id,
         ),
         citation_chain=[CitationLink(label=title, url=url, relation="primary")] if url else [],
-        metadata={"future_relevance": True, "location": record.get("location")},
+        metadata={"future_relevance": True, "location": record.get("location"), "travel_minutes": record.get("travel_minutes")},
     )
 
 

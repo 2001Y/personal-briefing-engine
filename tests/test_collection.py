@@ -119,3 +119,32 @@ def test_broad_day_end_invokes_expected_connectors_only() -> None:
     assert gmail.calls == 1
     assert hermes_history.calls == 1
     assert notes.calls == 1
+
+
+def test_calendar_leave_now_invokes_calendar_connector_only() -> None:
+    profile = get_trigger_profile("calendar.leave_now.default")
+    trigger = TriggerEvent(
+        id="trigger-3",
+        type=profile.event_type,
+        profile_id=profile.id,
+        occurred_at="2026-04-21T08:30:00Z",
+        scope=TriggerScope(),
+    )
+    google_calendar = StubConnector("google_calendar")
+    gmail = StubConnector("gmail")
+    notes = StubConnector("notes")
+
+    collected = collect_for_trigger(
+        trigger,
+        profile,
+        {
+            google_calendar.id: google_calendar,
+            gmail.id: gmail,
+            notes.id: notes,
+        },
+    )
+
+    assert collected == ["google_calendar"]
+    assert google_calendar.calls == 1
+    assert gmail.calls == 0
+    assert notes.calls == 0
