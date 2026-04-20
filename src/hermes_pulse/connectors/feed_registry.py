@@ -1,8 +1,16 @@
+import logging
 from collections.abc import Callable, Iterator, Sequence
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
 from hermes_pulse.models import CitationLink, CollectedItem, ItemTimestamps, Provenance, SourceRegistryEntry
+
+
+logger = logging.getLogger(__name__)
+DEFAULT_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; HermesPulse/0.1; +https://github.com/nousresearch/hermes-pulse)",
+    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+}
 
 
 class FeedRegistryConnector:
@@ -17,8 +25,11 @@ class FeedRegistryConnector:
         for entry in entries:
             if not entry.rss_url:
                 continue
-            payload = self._fetcher(entry.rss_url)
-            items.extend(self._parse_items(entry, payload))
+            try:
+                payload = self._fetcher(entry.rss_url)
+                items.extend(self._parse_items(entry, payload))
+            except Exception as exc:
+                logger.warning("Skipping feed source %s after fetch/parse failure: %s", entry.id, exc)
         return items
 
     def _parse_items(self, entry: SourceRegistryEntry, payload: str) -> list[CollectedItem]:
@@ -52,7 +63,8 @@ class FeedRegistryConnector:
 
 
 def _fetch_url(url: str) -> str:
-    with urlopen(url) as response:
+    request = Request(url, headers=DEFAULT_HEADERS)
+    with urlopen(request) as response:
         return response.read().decode("utf-8")
 
 

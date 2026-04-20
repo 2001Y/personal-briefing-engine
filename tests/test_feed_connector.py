@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.request import Request
 
 import hermes_pulse.connectors.feed_registry as feed_registry_module
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
@@ -73,8 +74,10 @@ def test_feed_registry_connector_collects_rdf_feed_items_with_provenance() -> No
     assert item.citation_chain[0].relation == "secondary"
 
 
-def test_feed_registry_connector_fetches_live_payloads_when_no_fetcher_is_provided(monkeypatch) -> None:
-    requested_urls: list[str] = []
+def test_feed_registry_connector_fetches_live_payloads_with_browser_headers_when_no_fetcher_is_provided(
+    monkeypatch,
+) -> None:
+    requests: list[Request] = []
 
     class DummyResponse:
         def __enter__(self):
@@ -86,8 +89,8 @@ def test_feed_registry_connector_fetches_live_payloads_when_no_fetcher_is_provid
         def read(self) -> bytes:
             return FIXTURE_XML.encode("utf-8")
 
-    def fake_urlopen(url: str, *args, **kwargs) -> DummyResponse:
-        requested_urls.append(url)
+    def fake_urlopen(request: Request, *args, **kwargs) -> DummyResponse:
+        requests.append(request)
         return DummyResponse()
 
     monkeypatch.setattr(feed_registry_module, "urlopen", fake_urlopen)
@@ -103,5 +106,77 @@ def test_feed_registry_connector_fetches_live_payloads_when_no_fetcher_is_provid
 
     items = FeedRegistryConnector().collect([entry])
 
-    assert requested_urls == ["https://example.com/feed.xml"]
+    assert len(requests) == 1
+    request = requests[0]
+    assert isinstance(request, Request)
+    assert request.full_url == "https://example.com/feed.xml"
+    headers = {key.lower(): value for key, value in request.header_items()}
+    assert headers["user-agent"]
+    assert headers["accept"]
+    assert [item.title for item in items] == ["Launch update"]
+
+
+def test_feed_registry_connector_continues_when_a_feed_fetch_fails() -> None:
+    entries = [
+        SourceRegistryEntry(
+            id="broken-feed",
+            source_family="company_updates",
+            domain="broken.example.com",
+            title="Broken Feed",
+            acquisition_mode="rss_poll",
+            authority_tier="primary",
+            rss_url="https://broken.example.com/feed.xml",
+        ),
+        SourceRegistryEntry(
+            id="official-blog",
+            source_family="company_updates",
+            domain="example.com",
+            title="Example Official Blog",
+            acquisition_mode="rss_poll",
+            authority_tier="primary",
+            rss_url="https://example.com/feed.xml",
+        ),
+    ]
+
+    def fetcher(url: str) -> str:
+        if url == "https://broken.example.com/feed.xml":
+            raise TimeoutError("timed out")
+        return FIXTURE_XML
+
+    items = FeedRegistryConnector(fetcher=fetcher).collect(entries)
+
+    assert [item.source for item in items] == ["official-blog"]
+    assert [item.title for item in items] == ["Launch update"]
+
+
+def test_feed_registry_connector_continues_when_a_feed_parse_fails() -> None:
+    entries = [
+        SourceRegistryEntry(
+            id="malformed-feed",
+            source_family="company_updates",
+            domain="malformed.example.com",
+            title="Malformed Feed",
+            acquisition_mode="rss_poll",
+            authority_tier="primary",
+            rss_url="https://malformed.example.com/feed.xml",
+        ),
+        SourceRegistryEntry(
+            id="official-blog",
+            source_family="company_updates",
+            domain="example.com",
+            title="Example Official Blog",
+            acquisition_mode="rss_poll",
+            authority_tier="primary",
+            rss_url="https://example.com/feed.xml",
+        ),
+    ]
+
+    def fetcher(url: str) -> str:
+        if url == "https://malformed.example.com/feed.xml":
+            return "<rss><channel><item>"
+        return FIXTURE_XML
+
+    items = FeedRegistryConnector(fetcher=fetcher).collect(entries)
+
+    assert [item.source for item in items] == ["official-blog"]
     assert [item.title for item in items] == ["Launch update"]
