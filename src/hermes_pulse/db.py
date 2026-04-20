@@ -140,3 +140,39 @@ def upsert_connector_cursor(
             (connector_id, cursor, last_poll_at, last_success_at, last_error),
         )
         connection.commit()
+
+
+def upsert_source_registry_state(
+    path: str | Path,
+    *,
+    registry_id: str,
+    last_poll_at: str | None,
+    last_seen_item_ids: str | None,
+    last_promoted_item_ids: str | None,
+    authority_tier: str | None,
+    notes: str | None = None,
+) -> None:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO source_registry_state (
+                registry_id,
+                last_poll_at,
+                last_seen_item_ids,
+                last_promoted_item_ids,
+                authority_tier,
+                notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(registry_id) DO UPDATE SET
+                last_poll_at = excluded.last_poll_at,
+                last_seen_item_ids = excluded.last_seen_item_ids,
+                last_promoted_item_ids = COALESCE(excluded.last_promoted_item_ids, source_registry_state.last_promoted_item_ids),
+                authority_tier = excluded.authority_tier,
+                notes = COALESCE(excluded.notes, source_registry_state.notes)
+            """,
+            (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes),
+        )
+        connection.commit()

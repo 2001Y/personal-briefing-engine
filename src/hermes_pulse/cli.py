@@ -20,6 +20,7 @@ from hermes_pulse.db import (
     record_trigger_run,
     update_trigger_run_status,
     upsert_connector_cursor,
+    upsert_source_registry_state,
 )
 from hermes_pulse.delivery.local_markdown import LocalMarkdownDelivery
 from hermes_pulse.models import CollectedItem, TriggerEvent, TriggerScope
@@ -108,16 +109,23 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     delivery_succeeded = False
     pending_connector_cursor_update: tuple[list[CollectedItem], list[str], str] | None = None
+    pending_source_registry_state_update: tuple[list[object], list[CollectedItem], str] | None = None
     try:
         markdown: str | None = None
 
         if args.command in {"morning-digest", "evening-digest"}:
             items = _build_digest(args.command, args)
+            occurred_at = _occurred_at_for_command(args.command, args)
             if args.state_db is not None:
                 pending_connector_cursor_update = (
                     items,
                     _parse_x_signal_types(getattr(args, "x_signals", None)),
-                    _occurred_at_for_command(args.command, args),
+                    occurred_at,
+                )
+                pending_source_registry_state_update = (
+                    load_source_registry(args.source_registry or DEFAULT_SOURCE_REGISTRY),
+                    items,
+                    occurred_at,
                 )
             archive_root = args.archive_root or Path.home() / "Pulse"
             archive_directory = write_morning_digest_archive(
@@ -152,6 +160,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             delivery_succeeded = True
             if args.state_db is not None and run_id is not None:
                 record_delivery(args.state_db, run_id=run_id, destination=str(delivered_path), status="success")
+
+        if args.state_db is not None and pending_source_registry_state_update is not None:
+            source_registry, items, occurred_at = pending_source_registry_state_update
+            _record_source_registry_state(
+                args.state_db,
+                source_registry=source_registry,
+                items=items,
+                occurred_at=occurred_at,
+            )
 
         if args.state_db is not None and pending_connector_cursor_update is not None:
             items, x_signal_types, occurred_at = pending_connector_cursor_update
@@ -261,6 +278,26 @@ def _record_connector_cursors_from_items(
             cursor=cursor,
             last_poll_at=occurred_at,
             last_success_at=occurred_at,
+        )
+
+
+def _record_source_registry_state(path: Path, *, source_registry: list[object], items: list[CollectedItem], occurred_at: str) -> None:
+    item_ids_by_source: dict[str, list[str]] = {}
+    for item in items:
+        item_ids_by_source.setdefault(item.source, []).append(item.id)
+
+    for entry in source_registry:
+        if entry.acquisition_mode not in {"rss_poll", "atom_poll", "known_source_search"}:
+            continue
+        if entry.id not in item_ids_by_source:
+            continue
+        upsert_source_registry_state(
+            path,
+            registry_id=entry.id,
+            last_poll_at=occurred_at,
+            last_seen_item_ids=json.dumps(item_ids_by_source.get(entry.id, [])),
+            last_promoted_item_ids=None,
+            authority_tier=entry.authority_tier,
         )
 
 

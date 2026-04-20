@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 import hermes_pulse.cli
+from hermes_pulse.db import initialize_database
 from hermes_pulse.models import Provenance
 from hermes_pulse.summarization.base import SummaryArtifact
 
@@ -96,6 +97,223 @@ def test_morning_digest_records_trigger_run_and_delivery_in_state_db(monkeypatch
 
     assert trigger_runs == [("digest.morning", "digest.morning.default", "digest", "completed")]
     assert deliveries == [(str(output_path), "success")]
+
+
+def test_morning_digest_records_source_registry_state(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "codex-pulse.db"
+
+    class FakeFeedRegistryConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return [
+                hermes_pulse.cli.CollectedItem(
+                    id="official-blog:post-2",
+                    source="official-blog",
+                    source_kind="feed_item",
+                    title="Official post",
+                    provenance=Provenance(
+                        provider="example.com",
+                        acquisition_mode="rss_poll",
+                        authority_tier="primary",
+                        primary_source_url="https://example.com/posts/2",
+                        raw_record_id="post-2",
+                    ),
+                ),
+                hermes_pulse.cli.CollectedItem(
+                    id="trusted-secondary-blog:entry-9",
+                    source="trusted-secondary-blog",
+                    source_kind="feed_item",
+                    title="Analyst note",
+                    provenance=Provenance(
+                        provider="trusted.example.org",
+                        acquisition_mode="atom_poll",
+                        authority_tier="trusted_secondary",
+                        primary_source_url="https://trusted.example.org/posts/9",
+                        raw_record_id="entry-9",
+                    ),
+                ),
+            ]
+
+    class FakeKnownSourceSearchConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return [
+                hermes_pulse.cli.CollectedItem(
+                    id="discovery-only-source:https://discover.example.net/story",
+                    source="discovery-only-source",
+                    source_kind="document",
+                    title="Discovery result",
+                    provenance=Provenance(
+                        provider="discover.example.net",
+                        acquisition_mode="known_source_search",
+                        authority_tier="discovery_only",
+                        primary_source_url="https://discover.example.net/story",
+                        raw_record_id="https://discover.example.net/story",
+                    ),
+                )
+            ]
+
+    monkeypatch.setattr(hermes_pulse.cli, "FeedRegistryConnector", FakeFeedRegistryConnector)
+    monkeypatch.setattr(hermes_pulse.cli, "KnownSourceSearchConnector", FakeKnownSourceSearchConnector)
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--now",
+                "2026-04-20T07:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        registry_state = connection.execute(
+            "SELECT registry_id, last_poll_at, last_seen_item_ids, authority_tier FROM source_registry_state ORDER BY registry_id"
+        ).fetchall()
+
+    assert registry_state == [
+        ("discovery-only-source", "2026-04-20T07:30:00Z", '["discovery-only-source:https://discover.example.net/story"]', "discovery_only"),
+        ("official-blog", "2026-04-20T07:30:00Z", '["official-blog:post-2"]', "primary"),
+        ("trusted-secondary-blog", "2026-04-20T07:30:00Z", '["trusted-secondary-blog:entry-9"]', "trusted_secondary"),
+    ]
+
+
+def test_source_registry_state_preserves_promoted_ids_and_notes(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "codex-pulse.db"
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "official-blog",
+                "2026-04-19T07:00:00Z",
+                '["official-blog:post-1"]',
+                '["official-blog:post-1"]',
+                "primary",
+                "keep this note",
+            ),
+        )
+        connection.commit()
+
+    class FakeFeedRegistryConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return [
+                hermes_pulse.cli.CollectedItem(
+                    id="official-blog:post-2",
+                    source="official-blog",
+                    source_kind="feed_item",
+                    title="Official post",
+                    provenance=Provenance(
+                        provider="example.com",
+                        acquisition_mode="rss_poll",
+                        authority_tier="primary",
+                        primary_source_url="https://example.com/posts/2",
+                        raw_record_id="post-2",
+                    ),
+                )
+            ]
+
+    monkeypatch.setattr(hermes_pulse.cli, "FeedRegistryConnector", FakeFeedRegistryConnector)
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--now",
+                "2026-04-20T07:35:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        registry_state = connection.execute(
+            "SELECT registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, notes FROM source_registry_state WHERE registry_id = 'official-blog'"
+        ).fetchone()
+
+    assert registry_state == (
+        "official-blog",
+        "2026-04-20T07:35:00Z",
+        '["official-blog:post-2"]',
+        '["official-blog:post-1"]',
+        "keep this note",
+    )
+
+
+def test_source_registry_state_skips_unobserved_sources(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "codex-pulse.db"
+
+    class FakeFeedRegistryConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return [
+                hermes_pulse.cli.CollectedItem(
+                    id="official-blog:post-2",
+                    source="official-blog",
+                    source_kind="feed_item",
+                    title="Official post",
+                    provenance=Provenance(
+                        provider="example.com",
+                        acquisition_mode="rss_poll",
+                        authority_tier="primary",
+                        primary_source_url="https://example.com/posts/2",
+                        raw_record_id="post-2",
+                    ),
+                )
+            ]
+
+    class EmptyKnownSourceSearchConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return []
+
+    monkeypatch.setattr(hermes_pulse.cli, "FeedRegistryConnector", FakeFeedRegistryConnector)
+    monkeypatch.setattr(hermes_pulse.cli, "KnownSourceSearchConnector", EmptyKnownSourceSearchConnector)
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--now",
+                "2026-04-20T07:40:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        registry_state = connection.execute(
+            "SELECT registry_id FROM source_registry_state ORDER BY registry_id"
+        ).fetchall()
+
+    assert registry_state == [("official-blog",)]
 
 
 def test_event_trigger_records_run_without_delivery_when_no_output(monkeypatch, tmp_path: Path) -> None:
@@ -573,3 +791,59 @@ def test_failed_digest_does_not_advance_x_signal_cursor(monkeypatch, tmp_path: P
         ).fetchall()
 
     assert cursors == []
+
+
+def test_failed_digest_does_not_persist_source_registry_state(monkeypatch, tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "codex-pulse.db"
+
+    class FakeFeedRegistryConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return [
+                hermes_pulse.cli.CollectedItem(
+                    id="official-blog:post-2",
+                    source="official-blog",
+                    source_kind="feed_item",
+                    title="Official post",
+                    provenance=Provenance(
+                        provider="example.com",
+                        acquisition_mode="rss_poll",
+                        authority_tier="primary",
+                        primary_source_url="https://example.com/posts/2",
+                        raw_record_id="post-2",
+                    ),
+                )
+            ]
+
+    class ExplodingSummarizer:
+        def summarize_archive(self, archive_directory: str | Path):
+            raise RuntimeError("codex unavailable")
+
+    monkeypatch.setattr(hermes_pulse.cli, "FeedRegistryConnector", FakeFeedRegistryConnector)
+    monkeypatch.setattr(hermes_pulse.cli, "CodexCliSummarizer", lambda: ExplodingSummarizer())
+
+    try:
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--now",
+                "2026-04-20T09:20:00Z",
+            ]
+        )
+    except RuntimeError as exc:
+        assert str(exc) == "codex unavailable"
+    else:
+        raise AssertionError("summarization failure should propagate")
+
+    with sqlite3.connect(database_path) as connection:
+        registry_state = connection.execute(
+            "SELECT registry_id FROM source_registry_state"
+        ).fetchall()
+
+    assert registry_state == []
