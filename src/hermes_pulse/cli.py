@@ -16,6 +16,7 @@ from hermes_pulse.connectors.location_context import LocationContextConnector, l
 from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
 from hermes_pulse.db import (
+    get_approval_action,
     list_active_suppression_subjects,
     record_approval_action,
     record_delivery,
@@ -454,6 +455,12 @@ def _record_approval_actions_from_items(path: Path, *, items: list[CollectedItem
 
 
 def _update_approval_action_from_command(path: Path, *, action_id: str, command: str, occurred_at: str) -> None:
+    action = get_approval_action(path, action_id=action_id)
+    if action is None:
+        raise ValueError("approval action not found")
+    user_decision, _execution_result = action
+    if user_decision != "pending":
+        raise ValueError("approval action is not pending")
     if command == "approve-action":
         update_approval_action(
             path,

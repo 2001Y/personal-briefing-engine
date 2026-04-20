@@ -377,3 +377,16 @@ def update_approval_action(
             (user_decision, execution_result, recorded_at, action_id),
         )
         connection.commit()
+
+
+def get_approval_action(path: str | Path, *, action_id: str) -> tuple[str, str] | None:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT user_decision, execution_result FROM approval_action_log WHERE action_id = ?",
+            (action_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return (row[0], row[1])

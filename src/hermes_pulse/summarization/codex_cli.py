@@ -1,3 +1,4 @@
+import json
 import subprocess
 import tempfile
 from pathlib import Path
@@ -56,6 +57,7 @@ class CodexCliInvocation:
 
 
 def build_codex_digest_prompt(archive_directory: Path, raw_items: str) -> str:
+    compact_raw_items = _compact_raw_items_for_prompt(raw_items)
     lines = [
         "あなたは Hermes Pulse の要約担当です。",
         "以下の archive directory から canonical digest を作成してください。",
@@ -69,7 +71,7 @@ def build_codex_digest_prompt(archive_directory: Path, raw_items: str) -> str:
         "",
         "## Primary grounding: raw/collected-items.json",
         "```json",
-        raw_items.rstrip(),
+        compact_raw_items.rstrip(),
         "```",
     ]
 
@@ -99,3 +101,45 @@ def _existing_summary_markdown(archive_directory: Path) -> list[tuple[Path, str]
             continue
         markdown_files.append((path.relative_to(archive_directory), path.read_text()))
     return markdown_files
+
+
+def _compact_raw_items_for_prompt(raw_items: str) -> str:
+    items = json.loads(raw_items)
+    compact_items: list[dict[str, object]] = []
+    for item in items:
+        timestamps = item.get("timestamps") or {}
+        provenance = item.get("provenance") or {}
+        compact_items.append(
+            {
+                "id": item.get("id"),
+                "source": item.get("source"),
+                "source_kind": item.get("source_kind"),
+                "title": _truncate_text(item.get("title")),
+                "excerpt": _truncate_text(item.get("excerpt"), max_length=280),
+                "body": _truncate_text(item.get("body"), max_length=280),
+                "url": item.get("url"),
+                "timestamps": {
+                    "created_at": timestamps.get("created_at"),
+                    "updated_at": timestamps.get("updated_at"),
+                    "start_at": timestamps.get("start_at"),
+                    "end_at": timestamps.get("end_at"),
+                },
+                "provenance": {
+                    "provider": provenance.get("provider"),
+                    "acquisition_mode": provenance.get("acquisition_mode"),
+                    "authority_tier": provenance.get("authority_tier"),
+                    "primary_source_url": provenance.get("primary_source_url"),
+                    "raw_record_id": provenance.get("raw_record_id"),
+                },
+            }
+        )
+    return json.dumps(compact_items, ensure_ascii=False, indent=2) + "\n"
+
+
+def _truncate_text(value: object, *, max_length: int = 160) -> str | None:
+    if not isinstance(value, str):
+        return None
+    text = " ".join(value.split())
+    if len(text) <= max_length:
+        return text
+    return f"{text[: max_length - 1]}…"
