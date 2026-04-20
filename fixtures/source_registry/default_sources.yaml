@@ -1,0 +1,198 @@
+sources:
+  - id: hacker-news
+    source_family: tech_frontpage
+    domain: news.ycombinator.com
+    title: Hacker News
+    acquisition_mode: rss_poll
+    authority_tier: trusted_secondary
+    rss_url: https://news.ycombinator.com/rss
+    search_hints:
+      - site:news.ycombinator.com AI agents developer tools startups
+    topical_scopes: [technology, startups, developer-tools]
+    language: en
+    requires_primary_confirmation: true
+
+  - id: apple-newsroom
+    source_family: official_newsroom
+    domain: apple.com
+    title: Apple Newsroom
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://www.apple.com/newsroom/rss-feed.rss
+    search_hints:
+      - site:apple.com/newsroom Apple press release
+    topical_scopes: [apple, devices, services]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: apple-developer-news
+    source_family: official_developer_news
+    domain: developer.apple.com
+    title: Apple Developer News
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://developer.apple.com/news/rss/news.rss
+    search_hints:
+      - site:developer.apple.com/news Apple developer news
+    topical_scopes: [apple, developer, frameworks]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: aapl-ch
+    source_family: specialist_apple_media
+    domain: applech2.com
+    title: AAPL Ch.
+    acquisition_mode: rss_poll
+    authority_tier: trusted_secondary
+    rss_url: https://applech2.com/index.rdf
+    search_hints:
+      - site:applech2.com Apple Silicon macOS iPhone
+    topical_scopes: [apple, macos, ios, accessories]
+    language: ja
+    requires_primary_confirmation: true
+
+  - id: nine-to-five-mac
+    source_family: specialist_apple_media
+    domain: 9to5mac.com
+    title: 9to5Mac
+    acquisition_mode: rss_poll
+    authority_tier: trusted_secondary
+    rss_url: https://9to5mac.com/feed/
+    search_hints:
+      - site:9to5mac.com Apple breaking news
+    topical_scopes: [apple, mac, iphone, developer]
+    language: en
+    requires_primary_confirmation: true
+
+  - id: macrumors
+    source_family: specialist_apple_media
+    domain: macrumors.com
+    title: MacRumors
+    acquisition_mode: known_source_search
+    authority_tier: trusted_secondary
+    search_hints:
+      - site:macrumors.com Apple rumors news
+    topical_scopes: [apple, rumors, devices]
+    language: en
+    requires_primary_confirmation: true
+
+  - id: appleinsider
+    source_family: specialist_apple_media
+    domain: appleinsider.com
+    title: AppleInsider
+    acquisition_mode: known_source_search
+    authority_tier: trusted_secondary
+    search_hints:
+      - site:appleinsider.com Apple news analysis
+    topical_scopes: [apple, mac, ios]
+    language: en
+    requires_primary_confirmation: true
+
+  - id: openai-news
+    source_family: official_lab_news
+    domain: openai.com
+    title: OpenAI News
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://openai.com/news/rss.xml
+    search_hints:
+      - site:openai.com/news OpenAI announcement
+    topical_scopes: [ai, llm, agents, research]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: anthropic-newsroom
+    source_family: official_lab_news
+    domain: anthropic.com
+    title: Anthropic Newsroom
+    acquisition_mode: known_source_search
+    authority_tier: primary
+    search_hints:
+      - site:anthropic.com/news Anthropic announcement
+    topical_scopes: [ai, llm, safety, agents]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: anthropic-engineering
+    source_family: official_engineering_blog
+    domain: anthropic.com
+    title: Anthropic Engineering
+    acquisition_mode: known_source_search
+    authority_tier: primary
+    search_hints:
+      - site:anthropic.com/engineering Anthropic engineering
+    topical_scopes: [ai, engineering, inference, evals]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: xai-news
+    source_family: official_lab_news
+    domain: x.ai
+    title: xAI News
+    acquisition_mode: known_source_search
+    authority_tier: primary
+    search_hints:
+      - site:x.ai/news xAI announcement
+    topical_scopes: [ai, llm, grok, speech]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: google-ai-blog
+    source_family: official_lab_news
+    domain: blog.google
+    title: Google AI Blog
+    acquisition_mode: known_source_search
+    authority_tier: primary
+    search_hints:
+      - site:blog.google AI Gemini announcement
+    topical_scopes: [ai, gemini, research, products]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: deepmind-blog
+    source_family: official_lab_news
+    domain: deepmind.google
+    title: Google DeepMind Blog
+    acquisition_mode: known_source_search
+    authority_tier: primary
+    search_hints:
+      - site:deepmind.google/discover/blog DeepMind research
+    topical_scopes: [ai, research, multimodal, science]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: meta-ai-blog
+    source_family: official_lab_news
+    domain: ai.meta.com
+    title: Meta AI Blog
+    acquisition_mode: known_source_search
+    authority_tier: primary
+    search_hints:
+      - site:ai.meta.com/blog Meta AI announcement
+    topical_scopes: [ai, open-weights, multimodal, research]
+    language: en
+    requires_primary_confirmation: false
+
+  - id: the-hacker-news
+    source_family: specialist_security_media
+    domain: thehackernews.com
+    title: The Hacker News
+    acquisition_mode: known_source_search
+    authority_tier: trusted_secondary
+    search_hints:
+      - site:thehackernews.com AI security breach
+    topical_scopes: [security, incidents, vulnerabilities]
+    language: en
+    requires_primary_confirmation: true
+
+  - id: daring-fireball
+    source_family: specialist_independent_blog
+    domain: daringfireball.net
+    title: Daring Fireball
+    acquisition_mode: known_source_search
+    authority_tier: trusted_secondary
+    search_hints:
+      - site:daringfireball.net Apple analysis
+    topical_scopes: [apple, ecosystem, commentary]
+    language: en
+    requires_primary_confirmation: true

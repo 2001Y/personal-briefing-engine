@@ -15,7 +15,7 @@ from hermes_pulse.trigger_registry import get_trigger_profile
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE_REGISTRY = REPO_ROOT / "fixtures/source_registry/sample_sources.yaml"
+DEFAULT_SOURCE_REGISTRY = REPO_ROOT / "fixtures/source_registry/default_sources.yaml"
 
 
 class BoundConnector:
