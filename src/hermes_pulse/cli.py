@@ -16,7 +16,7 @@ from hermes_pulse.connectors.location_context import LocationContextConnector, l
 from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
 from hermes_pulse.db import (
-    get_approval_action,
+    get_approval_action_record,
     list_active_suppression_subjects,
     record_approval_action,
     record_delivery,
@@ -99,6 +99,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--action-id")
     parser.add_argument("--execution-receipt")
     parser.add_argument("--execution-error")
+    parser.add_argument("--execution-provider")
+    parser.add_argument("--execution-store")
+    parser.add_argument("--execution-order-id")
+    parser.add_argument("--retryable", action="store_true")
     parser.add_argument("--now")
     parser.add_argument("--x-signals")
     return parser
@@ -122,6 +126,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             occurred_at=occurred_at,
             execution_receipt=getattr(args, "execution_receipt", None),
             execution_error=getattr(args, "execution_error", None),
+            execution_provider=getattr(args, "execution_provider", None),
+            execution_store=getattr(args, "execution_store", None),
+            execution_order_id=getattr(args, "execution_order_id", None),
+            retryable=getattr(args, "retryable", False),
         )
         return 0
     if args.state_db is not None:
@@ -478,29 +486,51 @@ def _update_approval_action_from_command(
     occurred_at: str,
     execution_receipt: str | None = None,
     execution_error: str | None = None,
+    execution_provider: str | None = None,
+    execution_store: str | None = None,
+    execution_order_id: str | None = None,
+    retryable: bool = False,
 ) -> None:
-    if command == "complete-action" and execution_error:
-        raise ValueError("complete-action does not accept --execution-error")
-    if command == "failed-action" and execution_receipt:
-        raise ValueError("failed-action does not accept --execution-receipt")
-    if command == "approve-action" and (execution_receipt or execution_error):
+    if command == "complete-action" and (execution_error or retryable):
+        raise ValueError("complete-action does not accept --execution-error or --retryable")
+    if command == "failed-action" and (execution_receipt or execution_order_id):
+        raise ValueError("failed-action does not accept --execution-receipt or --execution-order-id")
+    if command == "approve-action" and (
+        execution_receipt or execution_error or execution_provider or execution_store or execution_order_id or retryable
+    ):
         raise ValueError("approve-action does not accept execution detail flags")
-    if command == "reject-action" and (execution_receipt or execution_error):
+    if command == "reject-action" and (
+        execution_receipt or execution_error or execution_provider or execution_store or execution_order_id or retryable
+    ):
         raise ValueError("reject-action does not accept execution detail flags")
 
-    action = get_approval_action(path, action_id=action_id)
+    action = get_approval_action_record(path, action_id=action_id)
     if action is None:
         raise ValueError("approval action not found")
-    user_decision, execution_result = action
+    user_decision = action["user_decision"]
+    execution_result = action["execution_result"]
     if command in {"complete-action", "failed-action"}:
         if user_decision != "approved" or execution_result != "approved_pending_execution":
             raise ValueError("approval action is not awaiting execution completion")
         updated_execution_result = "executed" if command == "complete-action" else "failed"
-        execution_details = None
-        if command == "complete-action" and execution_receipt:
-            execution_details = json.dumps({"receipt": execution_receipt}, ensure_ascii=False)
-        if command == "failed-action" and execution_error:
-            execution_details = json.dumps({"error": execution_error}, ensure_ascii=False)
+        details_payload: dict[str, object] = {}
+        if command == "complete-action":
+            if execution_receipt:
+                details_payload["receipt"] = execution_receipt
+            if execution_provider:
+                details_payload["provider"] = execution_provider
+            if execution_store:
+                details_payload["store"] = execution_store
+            if execution_order_id:
+                details_payload["order_id"] = execution_order_id
+        else:
+            if execution_error:
+                details_payload["error"] = execution_error
+            if execution_provider:
+                details_payload["provider"] = execution_provider
+            if retryable:
+                details_payload["retryable"] = True
+        execution_details = json.dumps(details_payload, ensure_ascii=False) if details_payload else None
         update_approval_action(
             path,
             action_id=action_id,
@@ -509,6 +539,25 @@ def _update_approval_action_from_command(
             execution_details=execution_details,
             recorded_at=occurred_at,
         )
+        record_feedback(
+            path,
+            run_id=action["run_id"],
+            category="action_execution",
+            subject=action["action_kind"],
+            signal=updated_execution_result,
+            value="1",
+            recorded_at=occurred_at,
+        )
+        if command == "failed-action" and retryable:
+            record_feedback(
+                path,
+                run_id=action["run_id"],
+                category="action_execution",
+                subject=action["action_kind"],
+                signal="retryable_failure",
+                value="1",
+                recorded_at=occurred_at,
+            )
         return
     if user_decision != "pending":
         raise ValueError("approval action is not pending")
