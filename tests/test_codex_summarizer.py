@@ -62,6 +62,46 @@ def test_codex_cli_summarizer_builds_grounded_prompt_and_writes_canonical_digest
     assert "# Morning Digest" in prompt
 
 
+def test_codex_cli_summarizer_compacts_large_raw_items_before_prompting(tmp_path: Path) -> None:
+    archive_directory = tmp_path / "2026-04-20"
+    raw_directory = archive_directory / "raw"
+    raw_directory.mkdir(parents=True)
+
+    huge_excerpt = "x" * 5000
+    raw_items = [
+        {
+            "id": "apple-newsroom:launch",
+            "source": "apple-newsroom",
+            "source_kind": "feed_item",
+            "title": "Launch update",
+            "excerpt": huge_excerpt,
+            "body": huge_excerpt,
+            "url": "https://example.com/posts/launch-update",
+            "timestamps": {"created_at": "2026-04-20T07:00:00Z"},
+            "provenance": {
+                "provider": "example.com",
+                "acquisition_mode": "rss_poll",
+                "authority_tier": "primary",
+                "primary_source_url": "https://example.com/posts/launch-update",
+            },
+        }
+    ]
+    (raw_directory / "collected-items.json").write_text(json.dumps(raw_items, indent=2) + "\n")
+
+    invocation = StubCodexInvocation("# Codex Digest\n")
+    summarizer = CodexCliSummarizer(invocation=invocation)
+
+    summarizer.summarize_archive(archive_directory)
+
+    prompt = invocation.calls[0]["prompt"]
+    assert isinstance(prompt, str)
+    assert "https://example.com/posts/launch-update" in prompt
+    assert '"title": "Launch update"' in prompt
+    assert len(prompt) < 5000
+    assert huge_excerpt not in prompt
+
+
+
 def test_codex_cli_summarizer_requires_raw_collected_items_json(tmp_path: Path) -> None:
     archive_directory = tmp_path / "2026-04-20"
     archive_directory.mkdir(parents=True)
