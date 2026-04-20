@@ -143,15 +143,18 @@ For now, the practical target is:
 
 ## Current repo status
 
-This repository now includes a **minimum executable runtime** for a scheduled morning digest.
+This repository now includes a **minimum executable runtime** for scheduled morning and evening digests.
 
 Implemented today:
 - `codex-pulse morning-digest` CLI entrypoint
 - trigger registry for `digest.morning.default`
+- trigger registry for `digest.evening.default`
 - YAML-backed source registry fixtures
 - collection orchestrator with curated connectors
 - feed registry connector
 - known-source-search connector
+- Google Calendar connector
+- Gmail connector
 - optional local connectors for Hermes history and notes
 - archive writer that persists raw collected items and Codex-facing inputs by date
 - Codex CLI summarization path
@@ -161,10 +164,10 @@ Implemented today:
 
 Current scope and gaps:
 - the runtime is still intentionally small and fixture-friendly
-- morning digest is the only canonical CLI flow today
-- calendar / Gmail / event-trigger connectors remain future work
+- canonical CLI flows today are `morning-digest` and `evening-digest`
+- event-trigger connectors remain future work
 - docs still describe broader target architecture beyond the currently implemented runtime
 
 Verification snapshot:
 - `pytest -q` → passing
-- current local test suite covers CLI, models, registries, collection, rendering, delivery, launchd integration, and the `xurl` connector
+- current local test suite covers CLI, models, registries, collection, Calendar/Gmail connectors, rendering, delivery, launchd integration, and the `xurl` connector

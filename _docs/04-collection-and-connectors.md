@@ -98,8 +98,8 @@ SSOT rules are strict:
 | Source | v1 canonical acquisition mode | Concrete path | Status |
 |---|---|---|---|
 | Hermes Agent history | `local_store` | local session/archive files under the user-controlled Hermes data directory | implemented |
-| Calendar | `official_api` | Google Calendar via OAuth-backed Google Workspace API tooling | planned |
-| Gmail | `official_api` | Gmail via OAuth-backed Google Workspace API tooling | planned |
+| Calendar | `official_api` | Google Calendar via OAuth-backed Google Workspace API tooling | implemented minimally |
+| Gmail | `official_api` | Gmail via OAuth-backed Google Workspace API tooling | implemented minimally |
 | Generic email (non-Gmail) | out of scope | do not mix IMAP variants into v1 until a separate canonical path is defined | out of scope |
 | Notes / docs | `local_store` | local markdown/text/doc artifacts explicitly pointed at by the user or configured paths | implemented minimally |
 | ChatGPT history | `official_export` | official OpenAI export zip or other raw user-owned export artifact | planned |
