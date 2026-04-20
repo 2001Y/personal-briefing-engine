@@ -286,6 +286,32 @@ def test_location_arrival_invokes_location_connector_only() -> None:
     assert gmail.calls == 0
 
 
+def test_location_dwell_invokes_location_connector_only() -> None:
+    profile = get_trigger_profile("location.dwell.default")
+    trigger = TriggerEvent(
+        id="trigger-7b",
+        type=profile.event_type,
+        profile_id=profile.id,
+        occurred_at="2026-04-21T15:20:00Z",
+        scope=TriggerScope(),
+    )
+    location_context = StubConnector("location_context")
+    google_calendar = StubConnector("google_calendar")
+
+    collected = collect_for_trigger(
+        trigger,
+        profile,
+        {
+            location_context.id: location_context,
+            google_calendar.id: google_calendar,
+        },
+    )
+
+    assert collected == ["location_context"]
+    assert location_context.calls == 1
+    assert google_calendar.calls == 0
+
+
 def test_calendar_gap_window_invokes_calendar_connector_only() -> None:
     profile = get_trigger_profile("calendar.gap_window.default")
     trigger = TriggerEvent(

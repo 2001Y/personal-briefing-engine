@@ -1,0 +1,12 @@
+{
+  "place": "Ginza Six",
+  "arrived_at": "2026-04-21T15:20:00Z",
+  "local_time": "2026-04-21T15:20:00+09:00",
+  "dwell_minutes": 18,
+  "place_category": "cafe_area",
+  "context": [
+    "Afternoon break window is open.",
+    "A short reset here would still keep the day on track."
+  ],
+  "maps_url": "https://maps.google.com/?q=Ginza+Six"
+}

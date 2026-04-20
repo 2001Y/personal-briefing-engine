@@ -38,6 +38,7 @@ from hermes_pulse.rendering import (
     render_gap_window_mini_digest,
     render_leave_now_warning,
     render_location_arrival_mini_digest,
+    render_location_dwell_nudge,
     render_mail_operational_warning,
     render_shopping_replenishment_action_prep,
     render_trigger_quality_review,
@@ -72,6 +73,7 @@ def build_parser() -> argparse.ArgumentParser:
             "shopping-replenishment",
             "feed-update",
             "location-arrival",
+            "location-dwell",
             "review-trigger-quality",
             "gap-window-mini-digest",
             "feed-update-deep-brief",
@@ -175,6 +177,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             markdown = _build_feed_update(args)
         elif args.command == "location-arrival":
             markdown = _build_location_arrival(args)
+        elif args.command == "location-dwell":
+            markdown = _build_location_dwell(args)
         elif args.command == "review-trigger-quality":
             items = _build_event_trigger_items("review.trigger_quality.default", args)
             markdown = render_trigger_quality_review(items)
@@ -278,6 +282,7 @@ def _profile_for_command(command: str | None):
         "shopping-replenishment": "shopping.replenishment.default",
         "feed-update": "feed.update.default",
         "location-arrival": "location.arrival.default",
+        "location-dwell": "location.dwell.default",
         "review-trigger-quality": "review.trigger_quality.default",
         "gap-window-mini-digest": "calendar.gap_window.default",
         "feed-update-deep-brief": "feed.update.expert_depth",
@@ -517,6 +522,11 @@ def _build_feed_update(args: argparse.Namespace) -> str | None:
 def _build_location_arrival(args: argparse.Namespace) -> str | None:
     items = _build_event_trigger_items("location.arrival.default", args)
     return render_location_arrival_mini_digest(items)
+
+
+def _build_location_dwell(args: argparse.Namespace) -> str | None:
+    items = _build_event_trigger_items("location.dwell.default", args)
+    return render_location_dwell_nudge(items)
 
 
 def _build_review_trigger_quality(args: argparse.Namespace) -> str | None:

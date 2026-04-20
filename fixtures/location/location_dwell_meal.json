@@ -1,0 +1,12 @@
+{
+  "place": "Shibuya Hikarie",
+  "arrived_at": "2026-04-21T12:10:00Z",
+  "local_time": "2026-04-21T12:10:00+09:00",
+  "dwell_minutes": 24,
+  "place_category": "shopping_mall",
+  "context": [
+    "Lunch window is open nearby.",
+    "You still have time before the next commitment."
+  ],
+  "maps_url": "https://maps.google.com/?q=Shibuya+Hikarie"
+}

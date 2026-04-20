@@ -85,6 +85,15 @@ TRIGGER_REGISTRY = {
         action_ceiling=1,
         cooldown_minutes=30,
     ),
+    "location.dwell.default": TriggerProfile(
+        id="location.dwell.default",
+        family="event",
+        event_type="location.dwell",
+        collection_preset="location_dwell",
+        output_mode="nudge",
+        action_ceiling=1,
+        cooldown_minutes=60,
+    ),
     "calendar.gap_window.default": TriggerProfile(
         id="calendar.gap_window.default",
         family="event",

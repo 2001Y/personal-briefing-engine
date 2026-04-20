@@ -138,6 +138,31 @@ def render_location_arrival_mini_digest(items: Iterable[CollectedItem]) -> str |
     return "\n".join(lines).rstrip() + "\n"
 
 
+def render_location_dwell_nudge(items: Iterable[CollectedItem]) -> str | None:
+    item = next((value for value in items if value.source == "location_context"), None)
+    if item is None:
+        return None
+    context = item.metadata.get("context") or []
+    reason = item.metadata.get("detected_reason") or "stopped_moving"
+    dwell_minutes = item.metadata.get("dwell_minutes")
+    lines = [
+        "# Location nudge",
+        "",
+        f"- Place: {item.title or item.id}",
+        f"- Reason: {_render_location_dwell_reason(reason)}",
+    ]
+    if dwell_minutes is not None:
+        lines.append(f"- Dwell: {dwell_minutes} min")
+    reason_message = _render_location_dwell_message(reason)
+    if reason_message:
+        lines.append(f"- {reason_message}")
+    for value in context:
+        lines.append(f"- {value}")
+    if item.url:
+        lines.append(f"- Map: {item.url}")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def render_trigger_quality_review(items: Iterable[CollectedItem]) -> str | None:
     item = next((value for value in items if value.source == "audit_context"), None)
     if item is None:
@@ -337,6 +362,24 @@ def _parse_key_value_lines(text: str) -> dict[str, str]:
         key, value = line.split(":", 1)
         values[key.strip().lower()] = value.strip()
     return values
+
+
+def _render_location_dwell_reason(reason: object) -> str:
+    return {
+        "meal_window": "meal window",
+        "snack_window": "snack window",
+        "stopped_moving": "stopped moving",
+        "transient_stop": "transient stop",
+    }.get(reason, "stopped moving")
+
+
+def _render_location_dwell_message(reason: object) -> str:
+    return {
+        "meal_window": "Lunch window is open nearby.",
+        "snack_window": "Afternoon snack timing fits this stop.",
+        "stopped_moving": "You have paused here long enough to surface local context.",
+        "transient_stop": "This stop still looks brief, so keep the context lightweight.",
+    }.get(reason, "You have paused here long enough to surface local context.")
 
 
 def _strip_html(text: str) -> str:

@@ -1,0 +1,12 @@
+{
+  "place": "Tokyo Station",
+  "arrived_at": "2026-04-21T10:05:00Z",
+  "local_time": "2026-04-21T10:05:00+09:00",
+  "dwell_minutes": 21,
+  "place_category": "station",
+  "context": [
+    "Pick up the parcel before leaving.",
+    "Check whether there is enough buffer for the next train."
+  ],
+  "maps_url": "https://maps.google.com/?q=Tokyo+Station"
+}
