@@ -90,7 +90,7 @@ Build:
 Success criteria:
 - short-form event outputs are useful and non-spammy
 - carry-over into later digests works
-- approval boundary respected for action_prep (minimal persistence and approve/reject transitions now implemented)
+- approval boundary respected for action_prep (minimal persistence, approve/reject transitions, and execution completion updates now implemented)
 
 ### Phase 7 — self-improvement loop
 Build:
