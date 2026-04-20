@@ -81,10 +81,10 @@ The defensible wedge remains the combination of:
 ## Important technical carry-over points
 
 ### X timeline diff
-The following points from legacy research remain canonical:
+The following points from legacy research remain useful, but they are not part of the v1 scope unless an official stable acquisition path is verified:
 - home timeline diff is not an append-only cursor problem
 - `last_seen_id` alone is insufficient
-- state should include `last_poll_at`, `last_top_id`, `seen_ids`, `last_snapshot_ids`, and `delivered_ids`
+- state would need `last_poll_at`, `last_top_id`, `seen_ids`, `last_snapshot_ids`, and `delivered_ids`
 - bookmarks and likes are stronger than home timeline from an intent perspective
 
 ### Conversation history acquisition
