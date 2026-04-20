@@ -63,8 +63,8 @@ def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path:
     assert result.slack_response == {"ok": True, "channel": "C123", "ts": "1712345.6789"}
 
 
-def test_build_parser_uses_codex_pulse_direct_delivery_program_name() -> None:
-    assert direct_delivery.build_parser().prog == "codex-pulse-direct-delivery"
+def test_build_parser_uses_hermes_pulse_direct_delivery_program_name() -> None:
+    assert direct_delivery.build_parser().prog == "hermes-pulse-direct-delivery"
 
 
 def test_post_canonical_digest_to_slack_fails_clearly_when_canonical_artifact_is_missing(

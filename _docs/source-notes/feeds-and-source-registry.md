@@ -2,7 +2,7 @@
 
 ## Why this note exists
 
-Codex Pulse should not rely on generic web search as its only external retrieval path.
+Hermes Pulse should not rely on generic web search as its only external retrieval path.
 Curated feed and source registries provide a firmer substrate for reliable collection and verification.
 
 ## Registry families

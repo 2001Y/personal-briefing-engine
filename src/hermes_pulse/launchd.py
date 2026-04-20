@@ -8,7 +8,7 @@ from typing import Sequence
 
 
 DEFAULT_LAUNCHD_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-DEFAULT_WRAPPER_FILENAME = "run-codex-pulse-direct-delivery.sh"
+DEFAULT_WRAPPER_FILENAME = "run-hermes-pulse-direct-delivery.sh"
 
 
 @dataclass(frozen=True)

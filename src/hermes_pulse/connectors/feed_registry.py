@@ -8,7 +8,7 @@ from hermes_pulse.models import CitationLink, CollectedItem, ItemTimestamps, Pro
 
 logger = logging.getLogger(__name__)
 DEFAULT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; CodexPulse/0.1; +https://github.com/2001Y/codex-pulse)",
+    "User-Agent": "Mozilla/5.0 (compatible; HermesPulse/0.1; +https://github.com/2001Y/HermesPulse)",
     "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
 }
 

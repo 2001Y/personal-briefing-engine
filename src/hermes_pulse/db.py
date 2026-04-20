@@ -67,6 +67,18 @@ SCHEMA_STATEMENTS = (
         recorded_at TEXT NOT NULL
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS approval_action_log (
+        action_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        action_kind TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        approval_boundary_reached INTEGER NOT NULL,
+        user_decision TEXT NOT NULL,
+        execution_result TEXT NOT NULL,
+        recorded_at TEXT NOT NULL
+    )
+    """,
 )
 
 
@@ -276,3 +288,47 @@ def record_feedback(
         )
         connection.commit()
     return feedback_id
+
+
+def record_approval_action(
+    path: str | Path,
+    *,
+    run_id: str,
+    action_kind: str,
+    subject: str,
+    approval_boundary_reached: bool,
+    user_decision: str,
+    execution_result: str,
+    recorded_at: str,
+) -> str:
+    database_path = Path(path)
+    initialize_database(database_path)
+    action_id = uuid4().hex
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO approval_action_log (
+                action_id,
+                run_id,
+                action_kind,
+                subject,
+                approval_boundary_reached,
+                user_decision,
+                execution_result,
+                recorded_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                action_id,
+                run_id,
+                action_kind,
+                subject,
+                1 if approval_boundary_reached else 0,
+                user_decision,
+                execution_result,
+                recorded_at,
+            ),
+        )
+        connection.commit()
+    return action_id

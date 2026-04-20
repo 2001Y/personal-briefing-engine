@@ -32,7 +32,7 @@ If you want the shortest path:
 
 ## Why this doc set exists
 
-The repository is now positioned as **Codex Pulse**: a Hermes-first, domain-agnostic but expert-depth-capable briefing pipeline.
+The repository is now positioned as **Hermes Pulse**: a Hermes-first, domain-agnostic but expert-depth-capable briefing pipeline.
 Morning and evening editions are treated as scheduled trigger profiles inside the same system that also handles proactive event triggers, feed updates, known-source retrieval, and trigger self-review.
 
 The current implementation target is practical Hermes-first execution:

@@ -1,8 +1,8 @@
-# Codex Pulse
+# Hermes Pulse
 
 English README / [日本語版README](./README.ja.md)
 
-Codex Pulse is a Hermes-first, source-rigorous personal briefing and operating pipeline for scheduled and proactive delivery.
+Hermes Pulse is a Hermes-first, source-rigorous personal briefing and operating pipeline for scheduled and proactive delivery.
 
 This repository is organized around one practical flow:
 
@@ -15,7 +15,7 @@ Today, the primary target runtime is **Hermes Agent**. The design may later be a
 
 ## Visual summary
 
-![Codex Pulse overview](./assets/overview-architecture.svg)
+![Hermes Pulse overview](./assets/overview-architecture.svg)
 
 ## What this repo does
 
@@ -146,7 +146,7 @@ For now, the practical target is:
 This repository now includes a **minimum executable runtime** for scheduled morning and evening digests.
 
 Implemented today:
-- `codex-pulse morning-digest` CLI entrypoint
+- `hermes-pulse morning-digest` CLI entrypoint
 - trigger registry for `digest.morning.default`
 - trigger registry for `digest.evening.default`
 - YAML-backed source registry fixtures
@@ -174,7 +174,7 @@ Implemented today:
 
 Current scope and gaps:
 - the runtime is still intentionally small and fixture-friendly
-- optional SQLite state wiring now exists for trigger runs, deliveries, delivered-item suppression history, audit-derived feedback logs, X-signal connector cursors, and source-registry state snapshots (`last_poll_at`, `last_seen_item_ids`, `last_promoted_item_ids`, `authority_tier`); richer source-registry state (for example trust-review notes and error metadata updates) and approval/action persistence remain future work
+- optional SQLite state wiring now exists for trigger runs, deliveries, delivered-item suppression history, audit-derived feedback logs, approval/action logs for `action_prep`, X-signal connector cursors, and source-registry state snapshots (`last_poll_at`, `last_seen_item_ids`, `last_promoted_item_ids`, `authority_tier`); richer source-registry state (for example trust-review notes and error metadata updates) remain future work
 - canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `feed-update-deep-brief`, `feed-update-source-audit`, `location-arrival`, `gap-window-mini-digest`, and `review-trigger-quality`
 - `calendar.leave_now`, `calendar.gap_window`, `mail.operational`, `shopping.replenishment`, `feed.update`, `feed.update.expert_depth`, `feed.update.source_audit`, `location.arrival`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
 - docs still describe broader target architecture beyond the currently implemented runtime

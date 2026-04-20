@@ -2,7 +2,7 @@
 
 ## Product statement
 
-Build **Codex Pulse** as a Hermes-first personal operating briefing pipeline that combines future preparation, people context, unresolved loops, resurfaced memory, authoritative external deltas, and source-rigorous expert-depth synthesis.
+Build **Hermes Pulse** as a Hermes-first personal operating briefing pipeline that combines future preparation, people context, unresolved loops, resurfaced memory, authoritative external deltas, and source-rigorous expert-depth synthesis.
 
 ## What makes this product different
 

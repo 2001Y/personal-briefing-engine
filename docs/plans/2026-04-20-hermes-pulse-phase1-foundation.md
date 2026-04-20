@@ -1,8 +1,8 @@
-# Codex Pulse Phase 1 Foundation Implementation Plan
+# Hermes Pulse Phase 1 Foundation Implementation Plan
 
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
-**Goal:** Build the minimum executable Codex Pulse runtime that can generate a morning digest from scheduled triggers, curated feed/source registries, and a small set of high-value connectors while preserving strong provenance and a path to expert-depth expansion.
+**Goal:** Build the minimum executable Hermes Pulse runtime that can generate a morning digest from scheduled triggers, curated feed/source registries, and a small set of high-value connectors while preserving strong provenance and a path to expert-depth expansion.
 
 **Architecture:** Start with one Python codebase, one SQLite database, one trigger registry, and one serial pipeline: trigger → collect → compose → deliver. Implement only the minimum needed for a stable scheduled morning digest plus the source-registry/feed foundation, so later event triggers and deeper domain packs can reuse the same primitives without redesign.
 
@@ -87,7 +87,7 @@ Expected: PASS.
 
 ```bash
 git add pyproject.toml src/hermes_pulse/__init__.py src/hermes_pulse/cli.py tests/test_cli_morning_digest.py
-git commit -m "feat: initialize Codex Pulse runtime skeleton"
+git commit -m "feat: initialize Hermes Pulse runtime skeleton"
 ```
 
 ### Task 2: Add canonical runtime models
@@ -127,7 +127,7 @@ Expected: PASS.
 
 ```bash
 git add src/hermes_pulse/models.py tests/test_models.py
-git commit -m "feat: add canonical Codex Pulse models"
+git commit -m "feat: add canonical Hermes Pulse models"
 ```
 
 ### Task 3: Add trigger registry with `digest.morning`
@@ -535,7 +535,7 @@ Manual verification command target:
 ```bash
 python -m hermes_pulse.cli morning-digest \
   --source-registry fixtures/source_registry/sample_sources.yaml \
-  --output /tmp/codex-pulse-morning.md
+  --output /tmp/hermes-pulse-morning.md
 ```
 
 Expected result:

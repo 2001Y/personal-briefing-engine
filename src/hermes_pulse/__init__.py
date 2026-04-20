@@ -1,1 +1,1 @@
-"""Codex Pulse runtime package."""
+"""Hermes Pulse runtime package."""

@@ -331,15 +331,15 @@ def test_morning_digest_defaults_archive_root_to_home_pulse_directory(
 def test_pyproject_declares_console_entrypoint() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text())
 
-    assert pyproject["project"]["name"] == "codex-pulse"
-    assert pyproject["project"]["scripts"]["codex-pulse"] == "hermes_pulse.cli:main"
-    assert pyproject["project"]["scripts"]["codex-pulse-direct-delivery"] == "hermes_pulse.direct_delivery:main"
+    assert pyproject["project"]["name"] == "hermes-pulse"
+    assert pyproject["project"]["scripts"]["hermes-pulse"] == "hermes_pulse.cli:main"
+    assert pyproject["project"]["scripts"]["hermes-pulse-direct-delivery"] == "hermes_pulse.direct_delivery:main"
 
 
-def test_cli_parser_uses_codex_pulse_program_name() -> None:
+def test_cli_parser_uses_hermes_pulse_program_name() -> None:
     parser = hermes_pulse.cli.build_parser()
 
-    assert parser.prog == "codex-pulse"
+    assert parser.prog == "hermes-pulse"
     assert parser.parse_args(["morning-digest", "--x-signals", "bookmarks,likes"]).x_signals == "bookmarks,likes"
 
 

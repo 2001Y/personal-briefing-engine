@@ -16,6 +16,7 @@ HERMES_HISTORY_PATH = ROOT / "fixtures/hermes_history/sample_session.json"
 NOTES_PATH = ROOT / "fixtures/notes/sample_notes.md"
 CALENDAR_FIXTURE = ROOT / "fixtures/google_workspace/calendar_leave_now_events.json"
 AUDIT_FIXTURE = ROOT / "fixtures/audit/trigger_quality.json"
+SHOPPING_NOTES_PATH = ROOT / "fixtures/notes/shopping_replenishment.md"
 
 
 @pytest.fixture(autouse=True)
@@ -66,7 +67,7 @@ def _install_stub_codex_summarizer(monkeypatch, template: str | None = None) -> 
 
 def test_morning_digest_records_trigger_run_and_delivery_in_state_db(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "deliveries" / "morning-digest.md"
 
     assert (
@@ -111,7 +112,7 @@ def test_morning_digest_records_trigger_run_and_delivery_in_state_db(monkeypatch
 
 def test_morning_digest_records_source_registry_state(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class FakeFeedRegistryConnector:
         def __init__(self, fetcher=None) -> None:
@@ -218,7 +219,7 @@ def test_morning_digest_records_source_registry_state(monkeypatch, tmp_path: Pat
 
 def test_source_registry_state_updates_promoted_ids_and_preserves_notes(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
     initialize_database(database_path)
     with sqlite3.connect(database_path) as connection:
         connection.execute(
@@ -288,7 +289,7 @@ def test_source_registry_state_updates_promoted_ids_and_preserves_notes(monkeypa
 
 def test_source_registry_state_skips_unobserved_sources(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class FakeFeedRegistryConnector:
         def __init__(self, fetcher=None) -> None:
@@ -345,7 +346,7 @@ def test_source_registry_state_skips_unobserved_sources(monkeypatch, tmp_path: P
 
 
 def test_event_trigger_records_run_without_delivery_when_no_output(monkeypatch, tmp_path: Path) -> None:
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     assert (
         hermes_pulse.cli.main(
@@ -375,7 +376,7 @@ def test_event_trigger_records_run_without_delivery_when_no_output(monkeypatch, 
 
 
 def test_review_trigger_quality_records_feedback_log(tmp_path: Path) -> None:
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     assert (
         hermes_pulse.cli.main(
@@ -408,9 +409,49 @@ def test_review_trigger_quality_records_feedback_log(tmp_path: Path) -> None:
     ]
 
 
+def test_shopping_replenishment_records_approval_action_log(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "action-prep" / "shopping.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "shopping-replenishment",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--notes",
+                str(SHOPPING_NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:05:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        action_rows = connection.execute(
+            "SELECT action_kind, subject, approval_boundary_reached, user_decision, execution_result, recorded_at FROM approval_action_log"
+        ).fetchall()
+
+    assert action_rows == [
+        (
+            "shopping.replenishment",
+            '{"buy": "Coffee beans", "preferred_store": "Kurasu", "link": "https://example.com/products/coffee-beans"}',
+            1,
+            "pending",
+            "not_executed",
+            "2026-04-20T12:05:00Z",
+        )
+    ]
+
+
 def test_delivery_failure_marks_trigger_run_failed(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "deliveries" / "morning-digest.md"
 
     class ExplodingDelivery:
@@ -451,7 +492,7 @@ def test_delivery_failure_marks_trigger_run_failed(monkeypatch, tmp_path: Path) 
 
 
 def test_summarization_failure_still_records_failed_trigger_run(monkeypatch, tmp_path: Path) -> None:
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class ExplodingSummarizer:
         def summarize_archive(self, archive_directory: str | Path):
@@ -488,7 +529,7 @@ def test_summarization_failure_still_records_failed_trigger_run(monkeypatch, tmp
 
 def test_delivery_state_logging_failure_uses_delivery_state_error_status(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "deliveries" / "morning-digest.md"
 
     def exploding_record_delivery(*args, **kwargs):
@@ -530,7 +571,7 @@ def test_delivery_state_logging_failure_uses_delivery_state_error_status(monkeyp
 
 def test_morning_digest_state_db_uses_explicit_now_timestamp(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
     occurred_at = "2020-01-01T00:00:00Z"
     collected_trigger_times: list[str] = []
     original_collect_for_trigger = hermes_pulse.cli.collect_for_trigger
@@ -571,7 +612,7 @@ def test_morning_digest_state_db_uses_explicit_now_timestamp(monkeypatch, tmp_pa
 
 def test_completed_status_write_failure_downgrades_to_delivery_state_error(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "deliveries" / "morning-digest.md"
     original_update = hermes_pulse.cli.update_trigger_run_status
 
@@ -614,7 +655,7 @@ def test_completed_status_write_failure_downgrades_to_delivery_state_error(monke
 
 def test_morning_digest_records_x_signal_connector_cursors(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class FakeXConnector:
         def collect(self, signal_types: list[str]):
@@ -693,7 +734,7 @@ def test_morning_digest_records_x_signal_connector_cursors(monkeypatch, tmp_path
 
 def test_morning_digest_records_empty_x_signal_poll_as_successful_cursor_refresh(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class EmptyXConnector:
         def collect(self, signal_types: list[str]):
@@ -732,7 +773,7 @@ def test_morning_digest_records_empty_x_signal_poll_as_successful_cursor_refresh
 
 def test_empty_x_signal_poll_preserves_existing_cursor(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class BookmarkXConnector:
         def collect(self, signal_types: list[str]):
@@ -801,7 +842,7 @@ def test_empty_x_signal_poll_preserves_existing_cursor(monkeypatch, tmp_path: Pa
 
 
 def test_failed_digest_does_not_advance_x_signal_cursor(monkeypatch, tmp_path: Path) -> None:
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class FakeXConnector:
         def collect(self, signal_types: list[str]):
@@ -856,7 +897,7 @@ def test_failed_digest_does_not_advance_x_signal_cursor(monkeypatch, tmp_path: P
 
 
 def test_failed_digest_does_not_persist_source_registry_state(monkeypatch, tmp_path: Path) -> None:
-    database_path = tmp_path / "state" / "codex-pulse.db"
+    database_path = tmp_path / "state" / "hermes-pulse.db"
 
     class FakeFeedRegistryConnector:
         def __init__(self, fetcher=None) -> None:

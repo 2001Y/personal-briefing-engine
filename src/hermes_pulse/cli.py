@@ -16,6 +16,7 @@ from hermes_pulse.connectors.location_context import LocationContextConnector, l
 from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
 from hermes_pulse.db import (
+    record_approval_action,
     record_delivery,
     record_feedback,
     record_suppression,
@@ -27,6 +28,7 @@ from hermes_pulse.db import (
 from hermes_pulse.delivery.local_markdown import LocalMarkdownDelivery
 from hermes_pulse.models import CollectedItem, SourceRegistryEntry, TriggerEvent, TriggerScope
 from hermes_pulse.rendering import (
+    _parse_key_value_lines,
     render_feed_update_nudge,
     render_feed_update_deep_brief,
     render_feed_update_source_audit,
@@ -55,7 +57,7 @@ class BoundConnector:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="codex-pulse")
+    parser = argparse.ArgumentParser(prog="hermes-pulse")
     parser.add_argument(
         "command",
         nargs="?",
@@ -114,6 +116,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     pending_source_registry_state_update: tuple[list[SourceRegistryEntry], list[CollectedItem], str] | None = None
     pending_suppression_update: tuple[list[CollectedItem], str, str, str] | None = None
     pending_feedback_update: tuple[list[CollectedItem], str, str] | None = None
+    pending_approval_action_update: tuple[list[CollectedItem], str, str] | None = None
     try:
         markdown: str | None = None
 
@@ -145,7 +148,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "mail-operational":
             markdown = _build_mail_operational(args)
         elif args.command == "shopping-replenishment":
-            markdown = _build_shopping_replenishment(args)
+            items = _build_event_trigger_items("shopping.replenishment.default", args)
+            markdown = render_shopping_replenishment_action_prep(items)
+            if args.state_db is not None and run_id is not None:
+                pending_approval_action_update = (items, occurred_at, run_id)
         elif args.command == "feed-update":
             markdown = _build_feed_update(args)
         elif args.command == "location-arrival":
@@ -195,6 +201,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 items=items,
                 occurred_at=occurred_at,
                 run_id=feedback_run_id,
+            )
+
+        if args.state_db is not None and pending_approval_action_update is not None:
+            items, occurred_at, action_run_id = pending_approval_action_update
+            _record_approval_actions_from_items(
+                args.state_db,
+                items=items,
+                occurred_at=occurred_at,
+                run_id=action_run_id,
             )
 
         if args.state_db is not None and pending_connector_cursor_update is not None:
@@ -383,6 +398,31 @@ def _record_feedback_from_audit_items(path: Path, *, items: list[CollectedItem],
                 value="1",
                 recorded_at=occurred_at,
             )
+
+
+def _record_approval_actions_from_items(path: Path, *, items: list[CollectedItem], occurred_at: str, run_id: str) -> None:
+    item = next(iter(items), None)
+    if item is None:
+        return
+    fields = _parse_key_value_lines(item.body or "")
+    subject = json.dumps(
+        {
+            "buy": fields.get("buy") or item.title or item.id,
+            "preferred_store": fields.get("preferred store"),
+            "link": fields.get("link"),
+        },
+        ensure_ascii=False,
+    )
+    record_approval_action(
+        path,
+        run_id=run_id,
+        action_kind="shopping.replenishment",
+        subject=subject,
+        approval_boundary_reached=True,
+        user_decision="pending",
+        execution_result="not_executed",
+        recorded_at=occurred_at,
+    )
 
 
 def _build_leave_now_warning(args: argparse.Namespace) -> str | None:

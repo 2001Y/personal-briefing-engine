@@ -57,7 +57,7 @@ class CodexCliInvocation:
 
 def build_codex_digest_prompt(archive_directory: Path, raw_items: str) -> str:
     lines = [
-        "あなたは Codex Pulse の要約担当です。",
+        "あなたは Hermes Pulse の要約担当です。",
         "以下の archive directory から canonical digest を作成してください。",
         "出力は日本語の Markdown のみを返してください。前置きや説明は不要です。",
         "一次情報として raw/collected-items.json を最優先で根拠にしてください。",

@@ -3,14 +3,14 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "codex-pulse"
+name = "hermes-pulse"
 version = "0.1.0"
-description = "Codex Pulse runtime"
+description = "Hermes Pulse runtime"
 requires-python = ">=3.11"
 
 [project.scripts]
-codex-pulse = "hermes_pulse.cli:main"
-codex-pulse-direct-delivery = "hermes_pulse.direct_delivery:main"
+hermes-pulse = "hermes_pulse.cli:main"
+hermes-pulse-direct-delivery = "hermes_pulse.direct_delivery:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

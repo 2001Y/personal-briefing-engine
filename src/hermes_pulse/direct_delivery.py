@@ -37,7 +37,7 @@ class DirectDeliveryResult:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="codex-pulse-direct-delivery")
+    parser = argparse.ArgumentParser(prog="hermes-pulse-direct-delivery")
     parser.add_argument("--source-registry", type=Path)
     parser.add_argument("--feed-fixture", type=Path)
     parser.add_argument("--search-fixture", type=Path)
@@ -113,7 +113,7 @@ def load_slack_direct_post_message(script_path: str | Path = DEFAULT_SLACK_DIREC
     if not script_path.exists():
         raise FileNotFoundError(f"Slack direct poster script is missing: {script_path}")
 
-    spec = importlib.util.spec_from_file_location("codex_pulse_slack_direct", script_path)
+    spec = importlib.util.spec_from_file_location("hermes_pulse_slack_direct", script_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Unable to load Slack direct poster script: {script_path}")
 
