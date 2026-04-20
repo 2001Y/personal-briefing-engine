@@ -22,6 +22,7 @@ from hermes_pulse.db import (
     record_feedback,
     record_suppression,
     record_trigger_run,
+    update_approval_action,
     update_trigger_run_status,
     upsert_connector_cursor,
     upsert_source_registry_state,
@@ -74,6 +75,8 @@ def build_parser() -> argparse.ArgumentParser:
             "gap-window-mini-digest",
             "feed-update-deep-brief",
             "feed-update-source-audit",
+            "approve-action",
+            "reject-action",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -88,6 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--archive-root", type=Path)
     parser.add_argument("--state-db", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--action-id")
     parser.add_argument("--now")
     parser.add_argument("--x-signals")
     return parser
@@ -100,9 +104,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     run_id: str | None = None
     profile = None
+    occurred_at = _occurred_at_for_command(args.command, args)
+    if args.command in {"approve-action", "reject-action"}:
+        if args.state_db is None or not args.action_id:
+            raise ValueError("approve/reject action commands require --state-db and --action-id")
+        _update_approval_action_from_command(args.state_db, action_id=args.action_id, command=args.command, occurred_at=occurred_at)
+        return 0
     if args.state_db is not None:
         profile = _profile_for_command(args.command)
-        occurred_at = _occurred_at_for_command(args.command, args)
         run_id = record_trigger_run(
             args.state_db,
             event_type=profile.event_type,
@@ -442,6 +451,28 @@ def _record_approval_actions_from_items(path: Path, *, items: list[CollectedItem
         execution_result="not_executed",
         recorded_at=occurred_at,
     )
+
+
+def _update_approval_action_from_command(path: Path, *, action_id: str, command: str, occurred_at: str) -> None:
+    if command == "approve-action":
+        update_approval_action(
+            path,
+            action_id=action_id,
+            user_decision="approved",
+            execution_result="approved_pending_execution",
+            recorded_at=occurred_at,
+        )
+        return
+    if command == "reject-action":
+        update_approval_action(
+            path,
+            action_id=action_id,
+            user_decision="rejected",
+            execution_result="cancelled",
+            recorded_at=occurred_at,
+        )
+        return
+    raise ValueError(f"unsupported action update command: {command}")
 
 
 def _build_leave_now_warning(args: argparse.Namespace) -> str | None:

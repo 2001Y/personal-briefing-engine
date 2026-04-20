@@ -18,7 +18,8 @@ Current runtime status:
 - minimal schema exists in `src/hermes_pulse/db.py`
 - `codex-pulse --state-db /path/to/db.sqlite3 ...` now records trigger runs, local deliveries, delivered-item suppression history, review/audit-derived feedback logs, approval/action logs for current `action_prep` flows, X-signal connector cursors, and source-registry poll state snapshots (`last_poll_at`, `last_seen_item_ids`, `last_promoted_item_ids`, `authority_tier`)
 - digest delivery now also filters active same-trigger suppression entries before archive/summarization, while cursor/state observation still uses raw collected items
-- richer approval history (for example explicit approve/reject transitions), trust-review notes, and source error metadata updates remain future work
+- approval/action logs now support minimal `approve-action` / `reject-action` state transitions, while final side-effect execution updates remain future work
+- richer approval history (for example explicit execution receipts beyond the current minimal transitions), trust-review notes, and source error metadata updates remain future work
 
 ## Required state families
 

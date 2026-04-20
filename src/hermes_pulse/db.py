@@ -355,3 +355,25 @@ def record_approval_action(
         )
         connection.commit()
     return action_id
+
+
+def update_approval_action(
+    path: str | Path,
+    *,
+    action_id: str,
+    user_decision: str,
+    execution_result: str,
+    recorded_at: str,
+) -> None:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            UPDATE approval_action_log
+            SET user_decision = ?, execution_result = ?, recorded_at = ?
+            WHERE action_id = ?
+            """,
+            (user_decision, execution_result, recorded_at, action_id),
+        )
+        connection.commit()
