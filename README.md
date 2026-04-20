@@ -168,13 +168,13 @@ Implemented today:
 - archive writer that persists raw collected items and Codex-facing inputs by date
 - Codex CLI summarization path
 - local markdown delivery adapter
-- optional local SQLite state logging via `--state-db` for trigger runs, deliveries, and X-signal connector cursors
+- optional local SQLite state logging via `--state-db` for trigger runs, deliveries, X-signal connector cursors, and basic observed source-registry state snapshots
 - launchd/direct-delivery helpers
 - official X API signal connector via `xurl`
 
 Current scope and gaps:
 - the runtime is still intentionally small and fixture-friendly
-- optional SQLite state wiring now exists for trigger runs, deliveries, and X-signal connector cursors, but broader source-registry / suppression / feedback persistence are still future work
+- optional SQLite state wiring now exists for trigger runs, deliveries, X-signal connector cursors, and basic observed source-registry state snapshots (`last_poll_at`, `last_seen_item_ids`, `authority_tier`); broader suppression / feedback persistence and richer source-registry state remain future work
 - canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `feed-update-deep-brief`, `feed-update-source-audit`, `location-arrival`, `gap-window-mini-digest`, and `review-trigger-quality`
 - `calendar.leave_now`, `calendar.gap_window`, `mail.operational`, `shopping.replenishment`, `feed.update`, `feed.update.expert_depth`, `feed.update.source_audit`, `location.arrival`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
 - docs still describe broader target architecture beyond the currently implemented runtime
