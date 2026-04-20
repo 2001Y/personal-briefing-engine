@@ -161,6 +161,9 @@ Implemented today:
 - `feed-update` event-trigger CLI
 - `location-arrival` event-trigger CLI
 - `review-trigger-quality` audit CLI
+- `gap-window-mini-digest` event-trigger CLI
+- `feed-update-deep-brief` event-trigger CLI
+- `feed-update-source-audit` event-trigger CLI
 - optional local connectors for Hermes history and notes
 - archive writer that persists raw collected items and Codex-facing inputs by date
 - Codex CLI summarization path
@@ -170,10 +173,10 @@ Implemented today:
 
 Current scope and gaps:
 - the runtime is still intentionally small and fixture-friendly
-- canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `location-arrival`, and `review-trigger-quality`
-- `calendar.leave_now`, `mail.operational`, `shopping.replenishment`, `feed.update`, `location.arrival`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
+- canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `feed-update-deep-brief`, `feed-update-source-audit`, `location-arrival`, `gap-window-mini-digest`, and `review-trigger-quality`
+- `calendar.leave_now`, `calendar.gap_window`, `mail.operational`, `shopping.replenishment`, `feed.update`, `feed.update.expert_depth`, `feed.update.source_audit`, `location.arrival`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
 - docs still describe broader target architecture beyond the currently implemented runtime
 
 Verification snapshot:
 - `pytest -q` → passing
-- current local test suite covers CLI, models, registries, collection, Calendar/Gmail/location/audit connectors, event-trigger rendering, delivery, launchd integration, and the `xurl` connector
+- current local test suite covers CLI, models, registries, collection, Calendar/Gmail/location/audit connectors, event-trigger rendering including deep brief/source audit paths, delivery, launchd integration, and the `xurl` connector

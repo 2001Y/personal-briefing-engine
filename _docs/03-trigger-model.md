@@ -56,7 +56,10 @@ These improve the system itself.
 
 Current implementation note:
 - `feed.update.default` currently renders a minimal `nudge`
+- `feed.update.expert_depth` currently renders a minimal `deep_brief`
+- `feed.update.source_audit` currently renders a minimal `source_audit`
 - `calendar.leave_now.default` currently renders a minimal `warning`
+- `calendar.gap_window.default` currently renders a minimal `mini_digest`
 - `mail.operational.default` currently renders a minimal `warning`
 - `shopping.replenishment.default` currently renders a minimal `action_prep`
 - `location.arrival.default` currently renders a minimal `mini_digest`
