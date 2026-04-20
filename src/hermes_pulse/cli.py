@@ -23,7 +23,7 @@ from hermes_pulse.db import (
     upsert_source_registry_state,
 )
 from hermes_pulse.delivery.local_markdown import LocalMarkdownDelivery
-from hermes_pulse.models import CollectedItem, TriggerEvent, TriggerScope
+from hermes_pulse.models import CollectedItem, SourceRegistryEntry, TriggerEvent, TriggerScope
 from hermes_pulse.rendering import (
     render_feed_update_nudge,
     render_feed_update_deep_brief,
@@ -109,7 +109,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     delivery_succeeded = False
     pending_connector_cursor_update: tuple[list[CollectedItem], list[str], str] | None = None
-    pending_source_registry_state_update: tuple[list[object], list[CollectedItem], str] | None = None
+    pending_source_registry_state_update: tuple[list[SourceRegistryEntry], list[CollectedItem], str] | None = None
     try:
         markdown: str | None = None
 
@@ -281,7 +281,7 @@ def _record_connector_cursors_from_items(
         )
 
 
-def _record_source_registry_state(path: Path, *, source_registry: list[object], items: list[CollectedItem], occurred_at: str) -> None:
+def _record_source_registry_state(path: Path, *, source_registry: list[SourceRegistryEntry], items: list[CollectedItem], occurred_at: str) -> None:
     item_ids_by_source: dict[str, list[str]] = {}
     for item in items:
         item_ids_by_source.setdefault(item.source, []).append(item.id)
