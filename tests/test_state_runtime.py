@@ -841,6 +841,44 @@ def test_complete_action_rejects_non_executable_action(tmp_path: Path) -> None:
         )
 
 
+def test_complete_action_rejects_execution_error_flag(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="complete-action does not accept --execution-error"):
+        hermes_pulse.cli.main(
+            [
+                "complete-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                "missing-action-id",
+                "--execution-error",
+                "api timeout",
+                "--now",
+                "2026-04-20T12:15:00Z",
+            ]
+        )
+
+
+def test_approve_action_rejects_execution_detail_flags(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="approve-action does not accept execution detail flags"):
+        hermes_pulse.cli.main(
+            [
+                "approve-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                "missing-action-id",
+                "--execution-receipt",
+                "ordered via amazon",
+                "--now",
+                "2026-04-20T12:10:00Z",
+            ]
+        )
+
+
 def test_failed_action_updates_approved_action_execution_result(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "action-prep" / "shopping.md"
@@ -926,6 +964,44 @@ def test_failed_action_rejects_unknown_action_id(tmp_path: Path) -> None:
                 "missing-action-id",
                 "--now",
                 "2026-04-20T12:20:00Z",
+            ]
+        )
+
+
+def test_failed_action_rejects_execution_receipt_flag(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="failed-action does not accept --execution-receipt"):
+        hermes_pulse.cli.main(
+            [
+                "failed-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                "missing-action-id",
+                "--execution-receipt",
+                "ordered via amazon",
+                "--now",
+                "2026-04-20T12:20:00Z",
+            ]
+        )
+
+
+def test_reject_action_rejects_execution_detail_flags(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="reject-action does not accept execution detail flags"):
+        hermes_pulse.cli.main(
+            [
+                "reject-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                "missing-action-id",
+                "--execution-error",
+                "api timeout",
+                "--now",
+                "2026-04-20T12:11:00Z",
             ]
         )
 

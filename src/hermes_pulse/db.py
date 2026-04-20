@@ -89,12 +89,6 @@ def initialize_database(path: str | Path) -> None:
     with sqlite3.connect(database_path) as connection:
         for statement in SCHEMA_STATEMENTS:
             connection.execute(statement)
-        approval_action_columns = {
-            row[1]
-            for row in connection.execute("PRAGMA table_info(approval_action_log)")
-        }
-        if "execution_details" not in approval_action_columns:
-            connection.execute("ALTER TABLE approval_action_log ADD COLUMN execution_details TEXT")
         connection.commit()
 
 

@@ -474,6 +474,15 @@ def _update_approval_action_from_command(
     execution_receipt: str | None = None,
     execution_error: str | None = None,
 ) -> None:
+    if command == "complete-action" and execution_error:
+        raise ValueError("complete-action does not accept --execution-error")
+    if command == "failed-action" and execution_receipt:
+        raise ValueError("failed-action does not accept --execution-receipt")
+    if command == "approve-action" and (execution_receipt or execution_error):
+        raise ValueError("approve-action does not accept execution detail flags")
+    if command == "reject-action" and (execution_receipt or execution_error):
+        raise ValueError("reject-action does not accept execution detail flags")
+
     action = get_approval_action(path, action_id=action_id)
     if action is None:
         raise ValueError("approval action not found")
