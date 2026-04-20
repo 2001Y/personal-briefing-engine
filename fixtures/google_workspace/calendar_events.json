@@ -1,0 +1,22 @@
+[
+  {
+    "id": "event-1",
+    "summary": "Team Standup",
+    "description": "Daily sync with the team",
+    "start": "2026-04-21T09:00:00Z",
+    "end": "2026-04-21T09:30:00Z",
+    "location": "Zoom",
+    "htmlLink": "https://calendar.google.com/calendar/event?eid=event-1",
+    "attendees": ["alice@example.com", "bob@example.com"]
+  },
+  {
+    "id": "event-2",
+    "summary": "Dinner reservation",
+    "description": "Dinner downtown",
+    "start": "2026-04-21T19:00:00Z",
+    "end": "2026-04-21T20:30:00Z",
+    "location": "Restaurant",
+    "htmlLink": "https://calendar.google.com/calendar/event?eid=event-2",
+    "attendees": ["partner@example.com"]
+  }
+]

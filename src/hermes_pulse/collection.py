@@ -5,8 +5,22 @@ from hermes_pulse.models import TriggerEvent, TriggerProfile
 
 
 COLLECTION_PRESETS = {
-    "broad_day_start": ["feed_registry", "known_source_search", "x_signals", "hermes_history", "notes"],
-    "broad_day_end": ["feed_registry", "known_source_search", "x_signals", "hermes_history", "notes"],
+    "broad_day_start": [
+        "feed_registry",
+        "known_source_search",
+        "x_signals",
+        "google_calendar",
+        "hermes_history",
+        "notes",
+    ],
+    "broad_day_end": [
+        "feed_registry",
+        "known_source_search",
+        "x_signals",
+        "google_calendar",
+        "hermes_history",
+        "notes",
+    ],
 }
 
 

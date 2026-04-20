@@ -1,4 +1,5 @@
 import argparse
+import json
 from collections.abc import Callable, Sequence
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 from hermes_pulse.archive import write_morning_digest_archive
 from hermes_pulse.collection import collect_for_trigger
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
+from hermes_pulse.connectors.google_calendar import GoogleCalendarConnector
 from hermes_pulse.connectors.hermes_history import HermesHistoryConnector
 from hermes_pulse.connectors.known_source_search import KnownSourceSearchConnector
 from hermes_pulse.connectors.notes import NotesConnector
@@ -35,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-registry", type=Path)
     parser.add_argument("--feed-fixture", type=Path)
     parser.add_argument("--search-fixture", type=Path)
+    parser.add_argument("--calendar-fixture", type=Path)
     parser.add_argument("--hermes-history", type=Path)
     parser.add_argument("--notes", type=Path)
     parser.add_argument("--archive-root", type=Path)
@@ -78,6 +81,8 @@ def _build_digest(command: str, args: argparse.Namespace) -> list[CollectedItem]
     source_registry = load_source_registry(args.source_registry or DEFAULT_SOURCE_REGISTRY)
     feed_fetcher = _build_feed_fetcher(args.feed_fixture)
     search_fetcher = _build_feed_fetcher(args.search_fixture)
+    calendar_fixture = getattr(args, "calendar_fixture", None)
+    calendar_runner = _build_json_runner(calendar_fixture)
     occurred_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     trigger = TriggerEvent(
         id="scheduled:digest.morning.default",
@@ -94,6 +99,8 @@ def _build_digest(command: str, args: argparse.Namespace) -> list[CollectedItem]
             lambda: KnownSourceSearchConnector(fetcher=search_fetcher).collect(source_registry)
         ),
     }
+    if calendar_runner is not None:
+        connectors["google_calendar"] = BoundConnector(lambda: GoogleCalendarConnector(runner=calendar_runner).collect())
     if args.x_signals:
         signal_types = [value.strip() for value in args.x_signals.split(",") if value.strip()]
         connectors["x_signals"] = BoundConnector(lambda: XUrlConnector().collect(signal_types))
@@ -111,6 +118,13 @@ def _build_feed_fetcher(feed_fixture: Path | None) -> Callable[[str], str] | Non
         return None
     payload = feed_fixture.read_text()
     return lambda url: payload
+
+
+def _build_json_runner(path: Path | None) -> Callable[[], list[dict[str, object]]] | None:
+    if path is None:
+        return None
+    payload = json.loads(path.read_text())
+    return lambda: payload
 
 
 if __name__ == "__main__":
