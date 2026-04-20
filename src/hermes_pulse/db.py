@@ -257,6 +257,29 @@ def record_suppression(
     return suppression_id
 
 
+def list_active_suppression_subjects(
+    path: str | Path,
+    *,
+    trigger_family: str,
+    occurred_at: str,
+) -> set[str]:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT subject
+            FROM suppression_history
+            WHERE trigger_family = ?
+              AND dismissal_status = 'active'
+              AND superseded_by_higher_authority = 0
+              AND (cooldown_expires_at IS NULL OR cooldown_expires_at >= ?)
+            """,
+            (trigger_family, occurred_at),
+        ).fetchall()
+    return {row[0] for row in rows}
+
+
 def record_feedback(
     path: str | Path,
     *,

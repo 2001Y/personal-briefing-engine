@@ -449,6 +449,96 @@ def test_shopping_replenishment_records_approval_action_log(tmp_path: Path) -> N
     ]
 
 
+def test_morning_digest_skips_items_suppressed_in_same_trigger_family(monkeypatch, tmp_path: Path) -> None:
+    summarizer_calls = _install_stub_codex_summarizer(monkeypatch)
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    first_output_path = tmp_path / "deliveries" / "first.md"
+    second_output_path = tmp_path / "deliveries" / "second.md"
+
+    class FakeFeedRegistryConnector:
+        def __init__(self, fetcher=None) -> None:
+            self.fetcher = fetcher
+
+        def collect(self, entries):
+            return [
+                hermes_pulse.cli.CollectedItem(
+                    id="official-blog:post-1",
+                    source="official-blog",
+                    source_kind="feed_item",
+                    title="Official post 1",
+                    provenance=Provenance(
+                        provider="example.com",
+                        acquisition_mode="rss_poll",
+                        authority_tier="primary",
+                        primary_source_url="https://example.com/posts/1",
+                        raw_record_id="post-1",
+                    ),
+                ),
+                hermes_pulse.cli.CollectedItem(
+                    id="official-blog:post-2",
+                    source="official-blog",
+                    source_kind="feed_item",
+                    title="Official post 2",
+                    provenance=Provenance(
+                        provider="example.com",
+                        acquisition_mode="rss_poll",
+                        authority_tier="primary",
+                        primary_source_url="https://example.com/posts/2",
+                        raw_record_id="post-2",
+                    ),
+                ),
+            ]
+
+    monkeypatch.setattr(hermes_pulse.cli, "FeedRegistryConnector", FakeFeedRegistryConnector)
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(first_output_path),
+                "--now",
+                "2026-04-20T07:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(second_output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert [item["title"] for item in summarizer_calls[0]["raw_items"]] == ["Official post 1", "Official post 2"]
+    assert summarizer_calls[1]["raw_items"] == []
+    assert second_output_path.read_text() == "# Codex Digest\n\n"
+
+    with sqlite3.connect(database_path) as connection:
+        suppression_count = connection.execute("SELECT COUNT(*) FROM suppression_history").fetchone()[0]
+        cursor_row = connection.execute(
+            "SELECT cursor, last_poll_at, last_success_at FROM connector_cursors WHERE connector_id = 'official-blog'"
+        ).fetchone()
+
+    assert suppression_count == 2
+    assert cursor_row is None
+
+
 def test_delivery_failure_marks_trigger_run_failed(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
     database_path = tmp_path / "state" / "hermes-pulse.db"

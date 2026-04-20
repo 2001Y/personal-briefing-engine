@@ -16,6 +16,7 @@ from hermes_pulse.connectors.location_context import LocationContextConnector, l
 from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
 from hermes_pulse.db import (
+    list_active_suppression_subjects,
     record_approval_action,
     record_delivery,
     record_feedback,
@@ -123,7 +124,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command in {"morning-digest", "evening-digest"}:
             items = _build_digest(args.command, args)
             occurred_at = _occurred_at_for_command(args.command, args)
+            deliverable_items = items
             if args.state_db is not None:
+                deliverable_items = _filter_suppressed_items(
+                    args.state_db,
+                    items=items,
+                    trigger_family=profile.event_type,
+                    occurred_at=occurred_at,
+                )
                 pending_connector_cursor_update = (
                     items,
                     _parse_x_signal_types(getattr(args, "x_signals", None)),
@@ -135,10 +143,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     occurred_at,
                 )
                 if run_id is not None:
-                    pending_suppression_update = (items, profile.event_type, occurred_at, run_id)
+                    pending_suppression_update = (deliverable_items, profile.event_type, occurred_at, run_id)
             archive_root = args.archive_root or Path.home() / "Pulse"
             archive_directory = write_morning_digest_archive(
-                items=items,
+                items=deliverable_items,
                 archive_root=archive_root,
                 archive_date=date.today().isoformat(),
             )
@@ -341,6 +349,17 @@ def _record_source_registry_state(path: Path, *, source_registry: list[SourceReg
             last_promoted_item_ids=json.dumps(item_ids_by_source.get(entry.id, [])),
             authority_tier=entry.authority_tier,
         )
+
+
+def _filter_suppressed_items(path: Path, *, items: list[CollectedItem], trigger_family: str, occurred_at: str) -> list[CollectedItem]:
+    suppressed_subjects = list_active_suppression_subjects(
+        path,
+        trigger_family=trigger_family,
+        occurred_at=occurred_at,
+    )
+    if not suppressed_subjects:
+        return items
+    return [item for item in items if json.dumps([item.source, item.id]) not in suppressed_subjects]
 
 
 def _record_suppression_history(path: Path, *, items: list[CollectedItem], trigger_family: str, occurred_at: str, run_id: str) -> None:
