@@ -281,6 +281,30 @@ def list_active_suppression_subjects(
     return {row[0] for row in rows}
 
 
+def get_suppression(path: str | Path, *, suppression_id: str) -> tuple[str, str] | None:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT subject, dismissal_status FROM suppression_history WHERE suppression_id = ?",
+            (suppression_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return (row[0], row[1])
+
+
+def update_suppression_status(path: str | Path, *, suppression_id: str, dismissal_status: str) -> None:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "UPDATE suppression_history SET dismissal_status = ? WHERE suppression_id = ?",
+            (dismissal_status, suppression_id),
+        )
+        connection.commit()
+
+
 def record_feedback(
     path: str | Path,
     *,

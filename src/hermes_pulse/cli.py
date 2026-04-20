@@ -17,6 +17,7 @@ from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
 from hermes_pulse.db import (
     get_approval_action_record,
+    get_suppression,
     list_active_suppression_subjects,
     record_approval_action,
     record_delivery,
@@ -24,6 +25,7 @@ from hermes_pulse.db import (
     record_suppression,
     record_trigger_run,
     update_approval_action,
+    update_suppression_status,
     update_trigger_run_status,
     upsert_connector_cursor,
     upsert_source_registry_state,
@@ -82,6 +84,8 @@ def build_parser() -> argparse.ArgumentParser:
             "reject-action",
             "complete-action",
             "failed-action",
+            "dismiss-suppression",
+            "expire-suppression",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -97,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--state-db", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--action-id")
+    parser.add_argument("--suppression-id")
     parser.add_argument("--execution-receipt")
     parser.add_argument("--execution-error")
     parser.add_argument("--execution-provider")
@@ -130,6 +135,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             execution_store=getattr(args, "execution_store", None),
             execution_order_id=getattr(args, "execution_order_id", None),
             retryable=getattr(args, "retryable", False),
+        )
+        return 0
+    if args.command in {"dismiss-suppression", "expire-suppression"}:
+        if args.state_db is None or not args.suppression_id:
+            raise ValueError("suppression update commands require --state-db and --suppression-id")
+        _update_suppression_from_command(
+            args.state_db,
+            suppression_id=args.suppression_id,
+            command=args.command,
         )
         return 0
     if args.state_db is not None:
@@ -476,6 +490,17 @@ def _record_approval_actions_from_items(path: Path, *, items: list[CollectedItem
         execution_result="not_executed",
         recorded_at=occurred_at,
     )
+
+
+def _update_suppression_from_command(path: Path, *, suppression_id: str, command: str) -> None:
+    suppression = get_suppression(path, suppression_id=suppression_id)
+    if suppression is None:
+        raise ValueError("suppression not found")
+    _, dismissal_status = suppression
+    if dismissal_status != "active":
+        raise ValueError("suppression is not active")
+    updated_status = "dismissed" if command == "dismiss-suppression" else "expired"
+    update_suppression_status(path, suppression_id=suppression_id, dismissal_status=updated_status)
 
 
 def _update_approval_action_from_command(

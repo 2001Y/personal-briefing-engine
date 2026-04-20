@@ -6,6 +6,7 @@ import pytest
 
 import hermes_pulse.cli
 from hermes_pulse.db import initialize_database
+from hermes_pulse.db import list_active_suppression_subjects
 from hermes_pulse.models import Provenance
 from hermes_pulse.summarization.base import SummaryArtifact
 
@@ -108,6 +109,163 @@ def test_morning_digest_records_trigger_run_and_delivery_in_state_db(monkeypatch
         ("digest.morning", "already_delivered_in_same_trigger_family", "2026-04-21T07:30:00Z", "active", 0),
         ("digest.morning", "already_delivered_in_same_trigger_family", "2026-04-21T07:30:00Z", "active", 0),
     ]
+
+
+def test_dismiss_suppression_updates_dismissal_status_and_deactivates_subject(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "deliveries" / "morning-digest.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--hermes-history",
+                str(HERMES_HISTORY_PATH),
+                "--notes",
+                str(NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T07:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        suppression_id = connection.execute(
+            "SELECT suppression_id FROM suppression_history ORDER BY suppression_id LIMIT 1"
+        ).fetchone()[0]
+
+    active_before = list_active_suppression_subjects(
+        database_path,
+        trigger_family="digest.morning",
+        occurred_at="2026-04-20T07:35:00Z",
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "dismiss-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                suppression_id,
+                "--now",
+                "2026-04-20T08:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT subject, dismissal_status FROM suppression_history WHERE suppression_id = ?",
+            (suppression_id,),
+        ).fetchone()
+
+    active_after = list_active_suppression_subjects(
+        database_path,
+        trigger_family="digest.morning",
+        occurred_at="2026-04-20T08:05:00Z",
+    )
+
+    assert row[1] == "dismissed"
+    assert row[0] in active_before
+    assert row[0] not in active_after
+    assert len(active_after) == len(active_before) - 1
+
+
+def test_expire_suppression_updates_dismissal_status_and_deactivates_subject(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "deliveries" / "morning-digest.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--hermes-history",
+                str(HERMES_HISTORY_PATH),
+                "--notes",
+                str(NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T07:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        suppression_id = connection.execute(
+            "SELECT suppression_id FROM suppression_history ORDER BY suppression_id LIMIT 1"
+        ).fetchone()[0]
+
+    active_before = list_active_suppression_subjects(
+        database_path,
+        trigger_family="digest.morning",
+        occurred_at="2026-04-20T07:35:00Z",
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "expire-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                suppression_id,
+                "--now",
+                "2026-04-20T08:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT subject, dismissal_status FROM suppression_history WHERE suppression_id = ?",
+            (suppression_id,),
+        ).fetchone()
+
+    active_after = list_active_suppression_subjects(
+        database_path,
+        trigger_family="digest.morning",
+        occurred_at="2026-04-20T08:05:00Z",
+    )
+
+    assert row[1] == "expired"
+    assert row[0] in active_before
+    assert row[0] not in active_after
+    assert len(active_after) == len(active_before) - 1
+
+
+def test_dismiss_suppression_rejects_unknown_suppression_id(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="suppression not found"):
+        hermes_pulse.cli.main(
+            [
+                "dismiss-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                "missing-suppression-id",
+                "--now",
+                "2026-04-20T08:00:00Z",
+            ]
+        )
 
 
 def test_morning_digest_records_source_registry_state(monkeypatch, tmp_path: Path) -> None:
@@ -889,6 +1047,11 @@ def test_approve_action_rejects_execution_detail_flags(tmp_path: Path) -> None:
                 "missing-action-id",
                 "--execution-receipt",
                 "ordered via amazon",
+                "--execution-provider",
+                "amazon",
+                "--execution-order-id",
+                "ORDER-123",
+                "--retryable",
                 "--now",
                 "2026-04-20T12:10:00Z",
             ]
@@ -946,6 +1109,9 @@ def test_failed_action_updates_approved_action_execution_result(tmp_path: Path) 
                 action_id,
                 "--execution-error",
                 "api timeout",
+                "--execution-provider",
+                "amazon",
+                "--retryable",
                 "--now",
                 "2026-04-20T12:20:00Z",
             ]
@@ -962,9 +1128,19 @@ def test_failed_action_updates_approved_action_execution_result(tmp_path: Path) 
     assert row == (
         "approved",
         "failed",
-        '{"error": "api timeout"}',
+        '{"error": "api timeout", "provider": "amazon", "retryable": true}',
         "2026-04-20T12:20:00Z",
     )
+
+    with sqlite3.connect(database_path) as connection:
+        feedback_rows = connection.execute(
+            "SELECT category, subject, signal, value, recorded_at FROM feedback_log ORDER BY category, signal, subject"
+        ).fetchall()
+
+    assert feedback_rows == [
+        ("action_execution", "shopping.replenishment", "failed", "1", "2026-04-20T12:20:00Z"),
+        ("action_execution", "shopping.replenishment", "retryable_failure", "1", "2026-04-20T12:20:00Z"),
+    ]
 
 
 def test_failed_action_rejects_unknown_action_id(tmp_path: Path) -> None:
@@ -987,7 +1163,7 @@ def test_failed_action_rejects_unknown_action_id(tmp_path: Path) -> None:
 def test_failed_action_rejects_execution_receipt_flag(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
 
-    with pytest.raises(ValueError, match="failed-action does not accept --execution-receipt"):
+    with pytest.raises(ValueError, match="failed-action does not accept --execution-receipt or --execution-order-id"):
         hermes_pulse.cli.main(
             [
                 "failed-action",
@@ -997,6 +1173,8 @@ def test_failed_action_rejects_execution_receipt_flag(tmp_path: Path) -> None:
                 "missing-action-id",
                 "--execution-receipt",
                 "ordered via amazon",
+                "--execution-order-id",
+                "ORDER-123",
                 "--now",
                 "2026-04-20T12:20:00Z",
             ]
@@ -1016,6 +1194,9 @@ def test_reject_action_rejects_execution_detail_flags(tmp_path: Path) -> None:
                 "missing-action-id",
                 "--execution-error",
                 "api timeout",
+                "--execution-provider",
+                "amazon",
+                "--retryable",
                 "--now",
                 "2026-04-20T12:11:00Z",
             ]
