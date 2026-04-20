@@ -63,6 +63,103 @@ def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path:
     assert result.slack_response == {"ok": True, "channel": "C123", "ts": "1712345.6789"}
 
 
+def test_post_canonical_digest_to_slack_converts_markdown_links_to_slack_links(tmp_path: Path) -> None:
+    archive_directory = tmp_path / date.today().isoformat()
+    digest_path = archive_directory / "summary" / "codex-digest.md"
+    digest_path.parent.mkdir(parents=True, exist_ok=True)
+    digest_path.write_text("# Codex Digest\n\n- [Launch update](https://example.com/posts/launch-update)\n")
+    calls: list[dict[str, object]] = []
+
+    def fake_post_message(
+        text: str,
+        channel: str,
+        thread_ts: str | None = None,
+        *,
+        unfurl_links: bool = False,
+        unfurl_media: bool = False,
+    ) -> dict[str, object]:
+        calls.append(
+            {
+                "text": text,
+                "channel": channel,
+                "thread_ts": thread_ts,
+                "unfurl_links": unfurl_links,
+                "unfurl_media": unfurl_media,
+            }
+        )
+        return {"ok": True, "channel": channel, "ts": "1712345.6789"}
+
+    result = direct_delivery.post_canonical_digest_to_slack(
+        archive_directory,
+        channel="C123",
+        post_message=fake_post_message,
+    )
+
+    assert calls == [
+        {
+            "text": "# Codex Digest\n\n- <https://example.com/posts/launch-update|Launch update>\n",
+            "channel": "C123",
+            "thread_ts": None,
+            "unfurl_links": False,
+            "unfurl_media": False,
+        }
+    ]
+    assert result.content == digest_path.read_text()
+
+
+def test_post_canonical_digest_to_slack_splits_oversized_digest_into_threaded_posts(tmp_path: Path) -> None:
+    archive_directory = tmp_path / date.today().isoformat()
+    digest_path = archive_directory / "summary" / "codex-digest.md"
+    digest_path.parent.mkdir(parents=True, exist_ok=True)
+    digest_path.write_text(
+        "# Codex Digest\n\n"
+        + "\n\n".join(
+            f"Paragraph {index}: [Link {index}](https://example.com/{index}) " + ("x" * 90)
+            for index in range(1, 7)
+        )
+        + "\n"
+    )
+    calls: list[dict[str, object]] = []
+
+    def fake_post_message(
+        text: str,
+        channel: str,
+        thread_ts: str | None = None,
+        *,
+        unfurl_links: bool = False,
+        unfurl_media: bool = False,
+    ) -> dict[str, object]:
+        calls.append(
+            {
+                "text": text,
+                "channel": channel,
+                "thread_ts": thread_ts,
+                "unfurl_links": unfurl_links,
+                "unfurl_media": unfurl_media,
+            }
+        )
+        return {"ok": True, "channel": channel, "ts": f"1712345.67{len(calls)}"}
+
+    result = direct_delivery.post_canonical_digest_to_slack(
+        archive_directory,
+        channel="C123",
+        post_message=fake_post_message,
+        slack_message_limit=180,
+    )
+
+    assert len(calls) >= 2
+    assert calls[0]["thread_ts"] is None
+    assert calls[1]["thread_ts"] == "1712345.671"
+    assert all("[Link" not in call["text"] for call in calls)
+    assert all("<https://example.com/" in call["text"] for call in calls)
+    assert result.slack_response == {"ok": True, "channel": "C123", "ts": f"1712345.67{len(calls)}"}
+    assert result.slack_responses == [
+        {"ok": True, "channel": "C123", "ts": f"1712345.67{index}"}
+        for index in range(1, len(calls) + 1)
+    ]
+    assert result.posted_messages == [call["text"] for call in calls]
+
+
 def test_build_parser_uses_hermes_pulse_direct_delivery_program_name() -> None:
     assert direct_delivery.build_parser().prog == "hermes-pulse-direct-delivery"
 

@@ -1,5 +1,6 @@
 import argparse
 import importlib.util
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -13,6 +14,8 @@ from hermes_pulse.summarization.base import CODEX_DIGEST_RELATIVE_PATH
 
 
 DEFAULT_SLACK_DIRECT_PATH = Path.home() / ".hermes" / "scripts" / "slack_direct.py"
+DEFAULT_SLACK_MESSAGE_LIMIT = 3500
+MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
 
 
 class SlackPoster(Protocol):
@@ -33,7 +36,9 @@ class DirectDeliveryResult:
     archive_directory: Path
     digest_path: Path
     content: str
+    posted_messages: list[str]
     slack_response: Any
+    slack_responses: list[Any]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -85,6 +90,7 @@ def post_canonical_digest_to_slack(
     channel: str,
     thread_ts: str | None = None,
     post_message: SlackPoster | None = None,
+    slack_message_limit: int = DEFAULT_SLACK_MESSAGE_LIMIT,
 ) -> DirectDeliveryResult:
     archive_directory = Path(archive_directory)
     digest_path = archive_directory / CODEX_DIGEST_RELATIVE_PATH
@@ -92,19 +98,23 @@ def post_canonical_digest_to_slack(
         raise FileNotFoundError(f"Canonical Codex digest artifact is missing: {digest_path}")
 
     content = digest_path.read_text()
+    rendered_content = _render_digest_for_slack(content)
+    message_chunks = _split_slack_text(rendered_content, limit=slack_message_limit)
     poster = post_message or load_slack_direct_post_message()
-    slack_response = poster(
-        content,
-        channel,
+    slack_responses = _post_slack_chunks(
+        poster,
+        message_chunks,
+        channel=channel,
         thread_ts=thread_ts,
-        unfurl_links=False,
-        unfurl_media=False,
     )
+    slack_response = slack_responses[-1]
     return DirectDeliveryResult(
         archive_directory=archive_directory,
         digest_path=digest_path,
         content=content,
+        posted_messages=message_chunks,
         slack_response=slack_response,
+        slack_responses=slack_responses,
     )
 
 
@@ -123,6 +133,59 @@ def load_slack_direct_post_message(script_path: str | Path = DEFAULT_SLACK_DIREC
     if not callable(post_message):
         raise RuntimeError(f"Slack direct poster script does not define callable post_message: {script_path}")
     return post_message
+
+
+def _render_digest_for_slack(markdown: str) -> str:
+    return MARKDOWN_LINK_RE.sub(lambda match: f"<{match.group(2)}|{match.group(1)}>", markdown)
+
+
+def _split_slack_text(text: str, *, limit: int = DEFAULT_SLACK_MESSAGE_LIMIT) -> list[str]:
+    if len(text) <= limit:
+        return [text]
+
+    chunks: list[str] = []
+    remaining = text
+    while len(remaining) > limit:
+        split_at = remaining.rfind("\n\n", 0, limit + 1)
+        separator_length = 2
+        if split_at == -1:
+            split_at = remaining.rfind("\n", 0, limit + 1)
+            separator_length = 1
+        if split_at == -1 or split_at < limit // 2:
+            split_at = limit
+            separator_length = 0
+        chunk = remaining[:split_at].rstrip()
+        if chunk:
+            chunks.append(chunk)
+        remaining = remaining[split_at + separator_length :].lstrip()
+    if remaining:
+        chunks.append(remaining)
+    return chunks or [text]
+
+
+def _post_slack_chunks(
+    poster: SlackPoster,
+    chunks: list[str],
+    *,
+    channel: str,
+    thread_ts: str | None,
+) -> list[Any]:
+    responses: list[Any] = []
+    active_thread_ts = thread_ts
+    for index, chunk in enumerate(chunks):
+        response = poster(
+            chunk,
+            channel,
+            thread_ts=active_thread_ts,
+            unfurl_links=False,
+            unfurl_media=False,
+        )
+        responses.append(response)
+        if index == 0 and active_thread_ts is None:
+            response_ts = response.get("ts") if isinstance(response, dict) else None
+            if isinstance(response_ts, str) and response_ts:
+                active_thread_ts = response_ts
+    return responses
 
 
 if __name__ == "__main__":
