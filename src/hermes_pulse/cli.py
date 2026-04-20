@@ -27,6 +27,7 @@ from hermes_pulse.db import (
     record_trigger_run,
     update_approval_action,
     update_suppression_status,
+    update_suppression_superseded_flag,
     update_trigger_run_status,
     upsert_connector_cursor,
     upsert_source_registry_state,
@@ -87,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
             "failed-action",
             "dismiss-suppression",
             "expire-suppression",
+            "supersede-suppression",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -138,7 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             retryable=getattr(args, "retryable", False),
         )
         return 0
-    if args.command in {"dismiss-suppression", "expire-suppression"}:
+    if args.command in {"dismiss-suppression", "expire-suppression", "supersede-suppression"}:
         if args.state_db is None or not args.suppression_id:
             raise ValueError("suppression update commands require --state-db and --suppression-id")
         _update_suppression_from_command(
@@ -552,9 +554,14 @@ def _update_suppression_from_command(path: Path, *, suppression_id: str, command
     suppression = get_suppression(path, suppression_id=suppression_id)
     if suppression is None:
         raise ValueError("suppression not found")
-    _, dismissal_status = suppression
+    _, dismissal_status, superseded_by_higher_authority = suppression
     if dismissal_status != "active":
         raise ValueError("suppression is not active")
+    if command == "supersede-suppression":
+        if superseded_by_higher_authority:
+            raise ValueError("suppression is already superseded")
+        update_suppression_superseded_flag(path, suppression_id=suppression_id, superseded_by_higher_authority=True)
+        return
     updated_status = "dismissed" if command == "dismiss-suppression" else "expired"
     update_suppression_status(path, suppression_id=suppression_id, dismissal_status=updated_status)
 

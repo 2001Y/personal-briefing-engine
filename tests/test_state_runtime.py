@@ -268,6 +268,153 @@ def test_dismiss_suppression_rejects_unknown_suppression_id(tmp_path: Path) -> N
         )
 
 
+def test_supersede_suppression_marks_higher_authority_and_deactivates_subject(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "deliveries" / "morning-digest.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--hermes-history",
+                str(HERMES_HISTORY_PATH),
+                "--notes",
+                str(NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T07:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        suppression_id = connection.execute(
+            "SELECT suppression_id FROM suppression_history ORDER BY suppression_id LIMIT 1"
+        ).fetchone()[0]
+
+    active_before = list_active_suppression_subjects(
+        database_path,
+        trigger_family="digest.morning",
+        occurred_at="2026-04-20T07:35:00Z",
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "supersede-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                suppression_id,
+                "--now",
+                "2026-04-20T08:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT subject, dismissal_status, superseded_by_higher_authority FROM suppression_history WHERE suppression_id = ?",
+            (suppression_id,),
+        ).fetchone()
+
+    active_after = list_active_suppression_subjects(
+        database_path,
+        trigger_family="digest.morning",
+        occurred_at="2026-04-20T08:05:00Z",
+    )
+
+    assert row[1:] == ("active", 1)
+    assert row[0] in active_before
+    assert row[0] not in active_after
+    assert len(active_after) == len(active_before) - 1
+
+
+def test_supersede_suppression_rejects_unknown_suppression_id(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="suppression not found"):
+        hermes_pulse.cli.main(
+            [
+                "supersede-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                "missing-suppression-id",
+                "--now",
+                "2026-04-20T08:00:00Z",
+            ]
+        )
+
+
+def test_supersede_suppression_rejects_already_superseded_row(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "deliveries" / "morning-digest.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--hermes-history",
+                str(HERMES_HISTORY_PATH),
+                "--notes",
+                str(NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T07:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        suppression_id = connection.execute(
+            "SELECT suppression_id FROM suppression_history ORDER BY suppression_id LIMIT 1"
+        ).fetchone()[0]
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "supersede-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                suppression_id,
+                "--now",
+                "2026-04-20T08:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with pytest.raises(ValueError, match="already superseded"):
+        hermes_pulse.cli.main(
+            [
+                "supersede-suppression",
+                "--state-db",
+                str(database_path),
+                "--suppression-id",
+                suppression_id,
+                "--now",
+                "2026-04-20T08:05:00Z",
+            ]
+        )
+
+
 def test_morning_digest_records_source_registry_state(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
     database_path = tmp_path / "state" / "hermes-pulse.db"

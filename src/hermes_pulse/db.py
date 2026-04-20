@@ -281,17 +281,17 @@ def list_active_suppression_subjects(
     return {row[0] for row in rows}
 
 
-def get_suppression(path: str | Path, *, suppression_id: str) -> tuple[str, str] | None:
+def get_suppression(path: str | Path, *, suppression_id: str) -> tuple[str, str, bool] | None:
     database_path = Path(path)
     initialize_database(database_path)
     with sqlite3.connect(database_path) as connection:
         row = connection.execute(
-            "SELECT subject, dismissal_status FROM suppression_history WHERE suppression_id = ?",
+            "SELECT subject, dismissal_status, superseded_by_higher_authority FROM suppression_history WHERE suppression_id = ?",
             (suppression_id,),
         ).fetchone()
     if row is None:
         return None
-    return (row[0], row[1])
+    return (row[0], row[1], bool(row[2]))
 
 
 def update_suppression_status(path: str | Path, *, suppression_id: str, dismissal_status: str) -> None:
@@ -301,6 +301,22 @@ def update_suppression_status(path: str | Path, *, suppression_id: str, dismissa
         connection.execute(
             "UPDATE suppression_history SET dismissal_status = ? WHERE suppression_id = ?",
             (dismissal_status, suppression_id),
+        )
+        connection.commit()
+
+
+def update_suppression_superseded_flag(
+    path: str | Path,
+    *,
+    suppression_id: str,
+    superseded_by_higher_authority: bool,
+) -> None:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "UPDATE suppression_history SET superseded_by_higher_authority = ? WHERE suppression_id = ?",
+            (1 if superseded_by_higher_authority else 0, suppression_id),
         )
         connection.commit()
 

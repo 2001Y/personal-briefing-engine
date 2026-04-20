@@ -20,7 +20,7 @@ Current runtime status:
 - digest delivery now also filters active same-trigger suppression entries before archive/summarization, while cursor/state observation still uses raw collected items
 - direct Slack delivery now keeps delivery-specific rendering (Slack-native links + threaded chunking) separate from the canonical archive markdown
 - approval/action logs now support minimal `approve-action` / `reject-action` state transitions, with validation for unknown action IDs, non-pending actions, and invalid execution-detail flag combinations; `complete-action` and `failed-action` can mark approved actions as executed or failed once they are awaiting execution completion, persist structured `execution_details` metadata (receipt/error/provider/store/order/retryable), and record minimal `action_execution` feedback rows
-- suppression history now also supports minimal `dismiss-suppression` / `expire-suppression` transitions so an active suppression row can be deactivated without waiting for cooldown expiry
+- suppression history now also supports minimal `dismiss-suppression` / `expire-suppression` / `supersede-suppression` transitions so rows can either be deactivated or excluded from active suppression filtering without waiting for cooldown expiry, including the higher-authority supersession flag path
 - legacy local DB/schema upgrade paths are intentionally out of scope; the runtime assumes the current schema
 - richer approval history (for example explicit execution receipts beyond the current minimal transitions), trust-review notes, and source error metadata updates remain future work
 
