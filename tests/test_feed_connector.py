@@ -8,6 +8,7 @@ from hermes_pulse.source_registry import load_source_registry
 
 
 FIXTURE_XML = Path("fixtures/feed_samples/official_feed.xml").read_text()
+ARTICLE_PAGE_HTML = Path("fixtures/feed_samples/article_page.html").read_text()
 RDF_FIXTURE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <rdf:RDF xmlns="http://purl.org/rss/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
   <channel rdf:about="https://applech2.com/">
@@ -41,6 +42,7 @@ def test_feed_registry_connector_collects_feed_items_with_provenance() -> None:
     assert official_item.provenance.acquisition_mode == "rss_poll"
     assert official_item.citation_chain[0].relation == "primary"
     assert official_item.citation_chain[0].url == "https://example.com/posts/launch-update"
+    assert official_item.body is None
 
     secondary_item = next(item for item in items if item.source == "trusted-secondary-blog")
     assert secondary_item.provenance is not None
@@ -72,6 +74,36 @@ def test_feed_registry_connector_collects_rdf_feed_items_with_provenance() -> No
     assert item.provenance is not None
     assert item.provenance.primary_source_url == "https://applech2.com/2026/04/index-update"
     assert item.citation_chain[0].relation == "secondary"
+
+
+def test_feed_registry_connector_enriches_body_from_article_page_when_available() -> None:
+    entries = load_source_registry(Path("fixtures/source_registry/sample_sources.yaml"))
+    connector = FeedRegistryConnector(
+        fetcher=lambda url: FIXTURE_XML,
+        page_fetcher=lambda url: ARTICLE_PAGE_HTML,
+    )
+
+    items = connector.collect(entries)
+
+    official_item = next(item for item in items if item.source == "official-blog")
+    assert official_item.body == (
+        "Launch update The launch is now available to all users. "
+        "Review the migration steps before enabling it in production."
+    )
+
+
+def test_feed_registry_connector_continues_when_article_body_fetch_fails() -> None:
+    entries = load_source_registry(Path("fixtures/source_registry/sample_sources.yaml"))
+    connector = FeedRegistryConnector(
+        fetcher=lambda url: FIXTURE_XML,
+        page_fetcher=lambda url: (_ for _ in ()).throw(TimeoutError("timed out")),
+    )
+
+    items = connector.collect(entries)
+
+    official_item = next(item for item in items if item.source == "official-blog")
+    assert official_item.title == "Launch update"
+    assert official_item.body is None
 
 
 def test_feed_registry_connector_fetches_live_payloads_with_browser_headers_when_no_fetcher_is_provided(

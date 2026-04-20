@@ -1,5 +1,7 @@
 import logging
 from collections.abc import Callable, Iterator, Sequence
+from html import unescape
+from html.parser import HTMLParser
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
@@ -11,14 +13,20 @@ DEFAULT_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; HermesPulse/0.1; +https://github.com/2001Y/HermesPulse)",
     "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
 }
+DEFAULT_ARTICLE_BODY_MAX_LENGTH = 1200
 
 
 class FeedRegistryConnector:
     id = "feed_registry"
     source_family = "feed_registry"
 
-    def __init__(self, fetcher: Callable[[str], str] | None = None) -> None:
+    def __init__(
+        self,
+        fetcher: Callable[[str], str] | None = None,
+        page_fetcher: Callable[[str], str] | None = None,
+    ) -> None:
         self._fetcher = fetcher or _fetch_url
+        self._page_fetcher = page_fetcher
 
     def collect(self, entries: Sequence[SourceRegistryEntry]) -> list[CollectedItem]:
         items: list[CollectedItem] = []
@@ -47,6 +55,7 @@ class FeedRegistryConnector:
                     source_kind="feed_item",
                     title=title,
                     excerpt=_text(raw_item, "description"),
+                    body=self._fetch_article_body(url),
                     url=url,
                     timestamps=ItemTimestamps(created_at=_text(raw_item, "pubDate")),
                     provenance=Provenance(
@@ -60,6 +69,55 @@ class FeedRegistryConnector:
                 )
             )
         return parsed_items
+
+    def _fetch_article_body(self, url: str | None) -> str | None:
+        if not url or self._page_fetcher is None:
+            return None
+        try:
+            payload = self._page_fetcher(url)
+        except Exception as exc:
+            logger.warning("Skipping article body fetch %s after fetch failure: %s", url, exc)
+            return None
+        return _extract_article_text(payload)
+
+
+class _ArticleBodyParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._skip_depth = 0
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:  # type: ignore[override]
+        if tag in {"script", "style", "noscript", "head", "title"}:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:  # type: ignore[override]
+        if tag in {"script", "style", "noscript", "head", "title"} and self._skip_depth:
+            self._skip_depth -= 1
+        elif tag in {"p", "div", "article", "section", "main", "h1", "h2", "h3", "li", "br"}:
+            self._parts.append("\n")
+
+    def handle_data(self, data: str) -> None:  # type: ignore[override]
+        if self._skip_depth:
+            return
+        text = data.strip()
+        if text:
+            self._parts.append(text)
+
+    def text(self) -> str:
+        plain_text = unescape(" ".join(self._parts))
+        normalized = " ".join(plain_text.split())
+        if len(normalized) <= DEFAULT_ARTICLE_BODY_MAX_LENGTH:
+            return normalized
+        return f"{normalized[: DEFAULT_ARTICLE_BODY_MAX_LENGTH - 1].rstrip()}…"
+
+
+def _extract_article_text(payload: str) -> str | None:
+    parser = _ArticleBodyParser()
+    parser.feed(payload)
+    parser.close()
+    text = parser.text()
+    return text or None
 
 
 def _fetch_url(url: str) -> str:
