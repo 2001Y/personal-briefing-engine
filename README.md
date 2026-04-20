@@ -143,14 +143,28 @@ For now, the practical target is:
 
 ## Current repo status
 
-This repository is currently a **planning and architecture repo**.
-It intentionally documents:
-- the Hermes-first system model
-- source acquisition constraints
-- feed/source registry ideas
-- ranking and suppression policy
-- delivery and approval patterns
-- state and audit requirements
-- a phased roadmap for future implementation
+This repository now includes a **minimum executable runtime** for a scheduled morning digest.
 
-It does **not** yet claim a production implementation.
+Implemented today:
+- `codex-pulse morning-digest` CLI entrypoint
+- trigger registry for `digest.morning.default`
+- YAML-backed source registry fixtures
+- collection orchestrator with curated connectors
+- feed registry connector
+- known-source-search connector
+- optional local connectors for Hermes history and notes
+- archive writer that persists raw collected items and Codex-facing inputs by date
+- Codex CLI summarization path
+- local markdown delivery adapter
+- launchd/direct-delivery helpers
+- official X API signal connector via `xurl`
+
+Current scope and gaps:
+- the runtime is still intentionally small and fixture-friendly
+- morning digest is the only canonical CLI flow today
+- calendar / Gmail / event-trigger connectors remain future work
+- docs still describe broader target architecture beyond the currently implemented runtime
+
+Verification snapshot:
+- `pytest -q` → passing
+- current local test suite covers CLI, models, registries, collection, rendering, delivery, launchd integration, and the `xurl` connector

@@ -23,6 +23,7 @@ class DirectDeliveryWrapperSpec:
     search_fixture: Path | None = None
     hermes_history: Path | None = None
     notes: Path | None = None
+    x_signals: str | None = None
     working_directory: Path | None = None
 
 
@@ -74,6 +75,8 @@ def build_direct_delivery_program_arguments(spec: DirectDeliveryWrapperSpec) -> 
         args.extend(["--hermes-history", str(spec.hermes_history)])
     if spec.notes is not None:
         args.extend(["--notes", str(spec.notes)])
+    if spec.x_signals is not None:
+        args.extend(["--x-signals", spec.x_signals])
     return args
 
 

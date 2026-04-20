@@ -22,6 +22,7 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
         channel="C123456",
         thread_ts="1712345.6789",
         archive_root=Path("/Users/akitani/Pulse Archive"),
+        x_signals="bookmarks,likes,home_timeline_reverse_chronological",
     )
 
     wrapper = render_direct_delivery_wrapper(spec)
@@ -41,6 +42,8 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
         "1712345.6789",
         "--archive-root",
         "/Users/akitani/Pulse Archive",
+        "--x-signals",
+        "bookmarks,likes,home_timeline_reverse_chronological",
     ]
 
 
@@ -78,6 +81,7 @@ def test_generate_launchd_artifacts_writes_wrapper_and_plist_to_output_directory
             repo_root=REPO_ROOT,
             channel="C123456",
             archive_root=Path("/Users/akitani/Pulse"),
+            x_signals="bookmarks,likes",
         ),
         plist_spec=LaunchdPlistSpec(
             label="dev.nous.codex-pulse.codex-delivery",
@@ -105,6 +109,8 @@ def test_generate_launchd_artifacts_writes_wrapper_and_plist_to_output_directory
         "C123456",
         "--archive-root",
         "/Users/akitani/Pulse",
+        "--x-signals",
+        "bookmarks,likes",
     ]
 
     plist_payload = plistlib.loads(artifacts.plist_path.read_bytes())
