@@ -157,6 +157,7 @@ SSOT rules are strict:
 - Canonical path: `local_store`
 - Concrete choice: Dawarich or another local user-controlled location database
 - Why: it preserves raw movement history under user control and avoids over-coupling the runtime to opaque vendor APIs
+- Current minimal runtime: fixture-backed `location.arrival` and `location.dwell` flows are implemented; the intended live scheduler shape is a narrow 5-minute poll against the local store rather than a feed-style broad digest run
 
 ## RSS / feed registries
 
@@ -193,6 +194,10 @@ It makes web search a fallback or expansion layer rather than the first and only
 - the source does not support stable live access
 - the user owns an export file
 - the data is retrospective memory, not immediate operational context
+
+## Feed body enrichment note
+
+For RSS/Atom items, the feed `description`/`excerpt` is often not enough for grounded synthesis. The current runtime now supports bounded article-page body enrichment when a feed item has a primary URL and the page can be fetched successfully. This is still subordinate to source rigor: the article page is treated as the same primary source, failures do not break collection, and the original feed excerpt remains preserved.
 
 ## Minimal storage stance
 

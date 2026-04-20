@@ -160,6 +160,7 @@ Implemented today:
 - `shopping-replenishment` event-trigger CLI
 - `feed-update` event-trigger CLI
 - `location-arrival` event-trigger CLI
+- `location-dwell` event-trigger CLI
 - `review-trigger-quality` audit CLI
 - `gap-window-mini-digest` event-trigger CLI
 - `feed-update-deep-brief` event-trigger CLI
@@ -168,6 +169,8 @@ Implemented today:
 - archive writer that persists raw collected items and Codex-facing inputs by date
 - Codex CLI summarization path
 - local markdown delivery adapter
+- Slack direct delivery that converts markdown links into Slack-native links and splits oversized digests into threaded posts
+- feed item body enrichment from fetched article pages when the page is available
 - optional local SQLite state logging via `--state-db` for trigger runs, deliveries, X-signal connector cursors, and basic observed source-registry state snapshots
 - launchd/direct-delivery helpers
 - official X API signal connector via `xurl`
@@ -175,8 +178,9 @@ Implemented today:
 Current scope and gaps:
 - the runtime is still intentionally small and fixture-friendly
 - optional SQLite state wiring now exists for trigger runs, deliveries, delivered-item suppression history, audit-derived feedback logs, approval/action logs for `action_prep` plus minimal approve/reject/complete transitions and basic validation, X-signal connector cursors, source-registry state snapshots (`last_poll_at`, `last_seen_item_ids`, `last_promoted_item_ids`, `authority_tier`), and same-trigger suppression filtering for digest delivery; richer source-registry state (for example trust-review notes and error metadata updates) remain future work
-- canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `feed-update-deep-brief`, `feed-update-source-audit`, `location-arrival`, `gap-window-mini-digest`, and `review-trigger-quality`
-- `calendar.leave_now`, `calendar.gap_window`, `mail.operational`, `shopping.replenishment`, `feed.update`, `feed.update.expert_depth`, `feed.update.source_audit`, `location.arrival`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
+- canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `feed-update-deep-brief`, `feed-update-source-audit`, `location-arrival`, `location-dwell`, `gap-window-mini-digest`, and `review-trigger-quality`
+- `calendar.leave_now`, `calendar.gap_window`, `mail.operational`, `shopping.replenishment`, `feed.update`, `feed.update.expert_depth`, `feed.update.source_audit`, `location.arrival`, `location.dwell`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
+- the intended high-frequency location shape is a narrow `location.dwell` poll (for example every 5 minutes) against a local-store source such as Dawarich, with cooldown/suppression used to avoid spam
 - docs still describe broader target architecture beyond the currently implemented runtime
 
 Verification snapshot:

@@ -75,6 +75,13 @@ Good shape:
 - why it matters today
 - immediate next step if any
 
+### Location dwell
+Good shape:
+- one low-urgency reason such as stopped-moving, meal-window, or snack-window
+- exactly enough local context for the next moment
+- map link retained
+- no broad digest dump
+
 ## Execution levels
 
 ### Level 0
@@ -107,6 +114,10 @@ Potential adapters:
 - local file / markdown
 - email summary
 - future app/web UI
+
+Current Slack direct-delivery expectation:
+- convert markdown links like `[label](url)` into Slack-native `<url|label>` formatting before posting
+- split oversized digest posts into a parent message plus threaded replies instead of sending one giant block
 
 ## Formatting rule
 
