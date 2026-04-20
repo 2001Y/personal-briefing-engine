@@ -157,6 +157,8 @@ def render_location_dwell_nudge(items: Iterable[CollectedItem]) -> str | None:
     if reason_message:
         lines.append(f"- {reason_message}")
     for value in context:
+        if reason_message and value == reason_message:
+            continue
         lines.append(f"- {value}")
     if item.url:
         lines.append(f"- Map: {item.url}")
