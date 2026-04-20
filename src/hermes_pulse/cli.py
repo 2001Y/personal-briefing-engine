@@ -79,6 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
             "approve-action",
             "reject-action",
             "complete-action",
+            "failed-action",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -107,9 +108,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     run_id: str | None = None
     profile = None
     occurred_at = _occurred_at_for_command(args.command, args)
-    if args.command in {"approve-action", "reject-action", "complete-action"}:
+    if args.command in {"approve-action", "reject-action", "complete-action", "failed-action"}:
         if args.state_db is None or not args.action_id:
-            raise ValueError("approve/reject action commands require --state-db and --action-id")
+            raise ValueError("action update commands require --state-db and --action-id")
         _update_approval_action_from_command(args.state_db, action_id=args.action_id, command=args.command, occurred_at=occurred_at)
         return 0
     if args.state_db is not None:
@@ -460,14 +461,15 @@ def _update_approval_action_from_command(path: Path, *, action_id: str, command:
     if action is None:
         raise ValueError("approval action not found")
     user_decision, execution_result = action
-    if command == "complete-action":
+    if command in {"complete-action", "failed-action"}:
         if user_decision != "approved" or execution_result != "approved_pending_execution":
             raise ValueError("approval action is not awaiting execution completion")
+        updated_execution_result = "executed" if command == "complete-action" else "failed"
         update_approval_action(
             path,
             action_id=action_id,
             user_decision="approved",
-            execution_result="executed",
+            execution_result=updated_execution_result,
             recorded_at=occurred_at,
         )
         return

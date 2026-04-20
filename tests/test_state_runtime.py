@@ -776,6 +776,185 @@ def test_complete_action_updates_approved_action_execution_result(tmp_path: Path
     assert row == ("approved", "executed", "2026-04-20T12:15:00Z")
 
 
+def test_complete_action_rejects_unknown_action_id(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="approval action not found"):
+        hermes_pulse.cli.main(
+            [
+                "complete-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                "missing-action-id",
+                "--now",
+                "2026-04-20T12:15:00Z",
+            ]
+        )
+
+
+def test_complete_action_rejects_non_executable_action(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "action-prep" / "shopping.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "shopping-replenishment",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--notes",
+                str(SHOPPING_NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:05:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        action_id = connection.execute("SELECT action_id FROM approval_action_log").fetchone()[0]
+
+    with pytest.raises(ValueError, match="approval action is not awaiting execution completion"):
+        hermes_pulse.cli.main(
+            [
+                "complete-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                action_id,
+                "--now",
+                "2026-04-20T12:15:00Z",
+            ]
+        )
+
+
+def test_failed_action_updates_approved_action_execution_result(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "action-prep" / "shopping.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "shopping-replenishment",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--notes",
+                str(SHOPPING_NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:05:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        action_id = connection.execute("SELECT action_id FROM approval_action_log").fetchone()[0]
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "approve-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                action_id,
+                "--now",
+                "2026-04-20T12:10:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "failed-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                action_id,
+                "--now",
+                "2026-04-20T12:20:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT user_decision, execution_result, recorded_at FROM approval_action_log WHERE action_id = ?",
+            (action_id,),
+        ).fetchone()
+
+    assert row == ("approved", "failed", "2026-04-20T12:20:00Z")
+
+
+def test_failed_action_rejects_unknown_action_id(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+
+    with pytest.raises(ValueError, match="approval action not found"):
+        hermes_pulse.cli.main(
+            [
+                "failed-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                "missing-action-id",
+                "--now",
+                "2026-04-20T12:20:00Z",
+            ]
+        )
+
+
+def test_failed_action_rejects_non_executable_action(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "action-prep" / "shopping.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "shopping-replenishment",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--notes",
+                str(SHOPPING_NOTES_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:05:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        action_id = connection.execute("SELECT action_id FROM approval_action_log").fetchone()[0]
+
+    with pytest.raises(ValueError, match="approval action is not awaiting execution completion"):
+        hermes_pulse.cli.main(
+            [
+                "failed-action",
+                "--state-db",
+                str(database_path),
+                "--action-id",
+                action_id,
+                "--now",
+                "2026-04-20T12:20:00Z",
+            ]
+        )
+
+
 def test_delivery_failure_marks_trigger_run_failed(monkeypatch, tmp_path: Path) -> None:
     _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
     database_path = tmp_path / "state" / "hermes-pulse.db"
