@@ -1,5 +1,5 @@
 from hermes_pulse.models import CitationLink, CollectedItem, IntentSignals, Provenance
-from hermes_pulse.rendering import render_morning_digest
+from hermes_pulse.rendering import render_location_dwell_nudge, render_morning_digest
 from hermes_pulse.synthesis import synthesize_candidates
 
 
@@ -143,3 +143,48 @@ def test_render_morning_digest_strips_html_from_summaries() -> None:
     assert "<strong>" not in digest
     assert "<div>" not in digest
     assert "<em>" not in digest
+
+
+def test_render_location_dwell_nudge_defaults_stationary_items_without_detected_reason() -> None:
+    item = CollectedItem(
+        id="location_context:tokyo-station",
+        source="location_context",
+        source_kind="place",
+        title="Tokyo Station",
+        url="https://maps.google.com/?q=Tokyo+Station",
+        metadata={
+            "context": ["Check whether there is enough buffer for the next train."],
+            "dwell_minutes": 21,
+        },
+    )
+
+    markdown = render_location_dwell_nudge([item])
+
+    assert markdown is not None
+    assert "Reason: stopped moving" in markdown
+    assert "Dwell: 21 min" in markdown
+    assert "Walking:" not in markdown
+    assert "You have paused here long enough to surface local context." in markdown
+
+
+def test_render_location_dwell_nudge_normalizes_unknown_reason_by_motion_mode() -> None:
+    stationary_item = CollectedItem(
+        id="location_context:stationary",
+        source="location_context",
+        source_kind="place",
+        title="Stationary",
+        metadata={"dwell_minutes": 18, "detected_reason": "future_reason"},
+    )
+    walking_item = CollectedItem(
+        id="location_context:walking",
+        source="location_context",
+        source_kind="place",
+        title="Walking",
+        metadata={"walking_minutes": 6, "detected_reason": "future_reason"},
+    )
+
+    stationary_markdown = render_location_dwell_nudge([stationary_item])
+    walking_markdown = render_location_dwell_nudge([walking_item])
+
+    assert stationary_markdown is not None and "Reason: stopped moving" in stationary_markdown
+    assert walking_markdown is not None and "Reason: walking nearby" in walking_markdown

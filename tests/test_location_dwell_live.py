@@ -15,10 +15,11 @@ def test_location_dwell_can_use_live_location_context_runner(monkeypatch, tmp_pa
         lambda: {
             "place": "Tokyo Station",
             "maps_url": "https://maps.google.com/?q=Tokyo+Station",
-            "context": ["Movement has paused long enough to surface local context."],
+            "context": ["You are moving at a walking pace, so nearby options can stay lightweight."],
             "local_time": "2026-04-20T21:00:00+09:00",
-            "dwell_minutes": 18,
-            "detected_reason": "stopped_moving",
+            "walking_minutes": 8,
+            "average_speed_m_s": 1.3,
+            "detected_reason": "walking_nearby",
         },
     )
     output_path = tmp_path / "nudges" / "location-dwell-live.md"
@@ -38,7 +39,7 @@ def test_location_dwell_can_use_live_location_context_runner(monkeypatch, tmp_pa
 
     content = output_path.read_text()
     assert "Tokyo Station" in content
-    assert "stopped moving" in content
+    assert "walking nearby" in content
 
 
 def test_location_dwell_skips_output_when_live_location_context_has_no_data(monkeypatch, tmp_path: Path) -> None:

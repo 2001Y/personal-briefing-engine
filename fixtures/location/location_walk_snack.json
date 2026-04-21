@@ -1,0 +1,14 @@
+{
+  "place": "Ginza Six",
+  "arrived_at": "2026-04-21T15:20:00Z",
+  "local_time": "2026-04-21T15:20:00+09:00",
+  "walking_minutes": 7,
+  "average_speed_m_s": 1.2,
+  "place_category": "cafe_area",
+  "detected_reason": "snack_window",
+  "context": [
+    "Afternoon snack timing fits your walk.",
+    "A short coffee detour would still keep the day on track."
+  ],
+  "maps_url": "https://maps.google.com/?q=Ginza+Six"
+}

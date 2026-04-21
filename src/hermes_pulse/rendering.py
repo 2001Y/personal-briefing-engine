@@ -143,17 +143,29 @@ def render_location_dwell_nudge(items: Iterable[CollectedItem]) -> str | None:
     if item is None:
         return None
     context = item.metadata.get("context") or []
-    reason = item.metadata.get("detected_reason") or "stopped_moving"
+    walking_minutes = item.metadata.get("walking_minutes")
+    average_speed_m_s = item.metadata.get("average_speed_m_s")
     dwell_minutes = item.metadata.get("dwell_minutes")
+    if item.metadata.get("detected_reason") is not None:
+        reason = item.metadata.get("detected_reason")
+    elif walking_minutes is not None:
+        reason = "walking_nearby"
+    else:
+        reason = "stopped_moving"
+    reason = _normalize_location_reason(reason, walking=walking_minutes is not None)
     lines = [
         "# Location nudge",
         "",
         f"- Place: {item.title or item.id}",
         f"- Reason: {_render_location_dwell_reason(reason)}",
     ]
-    if dwell_minutes is not None:
+    if walking_minutes is not None:
+        lines.append(f"- Walking: {walking_minutes} min")
+    elif dwell_minutes is not None:
         lines.append(f"- Dwell: {dwell_minutes} min")
-    reason_message = _render_location_dwell_message(reason)
+    if average_speed_m_s is not None:
+        lines.append(f"- Pace: {average_speed_m_s} m/s")
+    reason_message = _render_location_dwell_message(reason, walking=walking_minutes is not None)
     if reason_message:
         lines.append(f"- {reason_message}")
     for value in context:
@@ -366,22 +378,36 @@ def _parse_key_value_lines(text: str) -> dict[str, str]:
     return values
 
 
+def _normalize_location_reason(reason: object, *, walking: bool) -> str:
+    if reason in {"meal_window", "snack_window", "transient_stop"}:
+        return str(reason)
+    if reason == "walking_nearby":
+        return "walking_nearby" if walking else "stopped_moving"
+    if reason == "stopped_moving":
+        return "walking_nearby" if walking else "stopped_moving"
+    return "walking_nearby" if walking else "stopped_moving"
+
+
 def _render_location_dwell_reason(reason: object) -> str:
     return {
         "meal_window": "meal window",
         "snack_window": "snack window",
+        "walking_nearby": "walking nearby",
         "stopped_moving": "stopped moving",
         "transient_stop": "transient stop",
     }.get(reason, "stopped moving")
 
 
-def _render_location_dwell_message(reason: object) -> str:
+def _render_location_dwell_message(reason: object, *, walking: bool = False) -> str:
+    if reason == "meal_window":
+        return "Lunch window is open along your walk." if walking else "Lunch window is open nearby."
+    if reason == "snack_window":
+        return "Afternoon snack timing fits your walk." if walking else "Afternoon snack timing fits this stop."
     return {
-        "meal_window": "Lunch window is open nearby.",
-        "snack_window": "Afternoon snack timing fits this stop.",
+        "walking_nearby": "You are moving at a walking pace, so nearby options can stay lightweight.",
         "stopped_moving": "You have paused here long enough to surface local context.",
         "transient_stop": "This stop still looks brief, so keep the context lightweight.",
-    }.get(reason, "You have paused here long enough to surface local context.")
+    }.get(reason, "You are moving at a walking pace, so nearby options can stay lightweight.")
 
 
 def _strip_html(text: str) -> str:

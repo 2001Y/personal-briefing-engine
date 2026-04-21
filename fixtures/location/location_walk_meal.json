@@ -1,0 +1,14 @@
+{
+  "place": "Shibuya Hikarie",
+  "arrived_at": "2026-04-21T12:10:00Z",
+  "local_time": "2026-04-21T12:10:00+09:00",
+  "walking_minutes": 9,
+  "average_speed_m_s": 1.4,
+  "place_category": "shopping_mall",
+  "detected_reason": "meal_window",
+  "context": [
+    "Lunch window is open along your walk.",
+    "You still have time to choose something nearby without stopping long."
+  ],
+  "maps_url": "https://maps.google.com/?q=Shibuya+Hikarie"
+}

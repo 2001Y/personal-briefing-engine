@@ -1,0 +1,14 @@
+{
+  "place": "Tokyo Station",
+  "arrived_at": "2026-04-21T10:05:00Z",
+  "local_time": "2026-04-21T10:05:00+09:00",
+  "walking_minutes": 11,
+  "average_speed_m_s": 1.3,
+  "place_category": "station",
+  "detected_reason": "walking_nearby",
+  "context": [
+    "You are moving at a walking pace, so nearby options can stay lightweight.",
+    "Check whether anything useful is worth a short detour before the next leg."
+  ],
+  "maps_url": "https://maps.google.com/?q=Tokyo+Station"
+}

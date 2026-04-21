@@ -6,8 +6,9 @@ from hermes_pulse.trigger_registry import get_trigger_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REGISTRY_PATH = ROOT / "fixtures/source_registry/sample_sources.yaml"
-MEAL_FIXTURE_PATH = ROOT / "fixtures/location/location_dwell_meal.json"
-SNACK_FIXTURE_PATH = ROOT / "fixtures/location/location_dwell_snack.json"
+MEAL_FIXTURE_PATH = ROOT / "fixtures/location/location_walk_meal.json"
+SNACK_FIXTURE_PATH = ROOT / "fixtures/location/location_walk_snack.json"
+WALK_FIXTURE_PATH = ROOT / "fixtures/location/location_walk_default.json"
 STOP_FIXTURE_PATH = ROOT / "fixtures/location/location_dwell_stop.json"
 
 
@@ -20,7 +21,7 @@ def test_trigger_registry_exposes_location_dwell_profile() -> None:
     assert profile.collection_preset == "location_dwell"
 
 
-def test_location_dwell_writes_meal_window_nudge(tmp_path: Path) -> None:
+def test_location_dwell_writes_meal_window_nudge_while_walking(tmp_path: Path) -> None:
     output_path = tmp_path / "nudges" / "location-dwell-meal.md"
 
     assert (
@@ -42,11 +43,12 @@ def test_location_dwell_writes_meal_window_nudge(tmp_path: Path) -> None:
     assert content.startswith("# Location nudge")
     assert "Shibuya Hikarie" in content
     assert "meal window" in content
-    assert "Lunch window is open nearby." in content
+    assert "Walking: 9 min" in content
+    assert "Lunch window is open along your walk." in content
     assert "https://maps.google.com/?q=Shibuya+Hikarie" in content
 
 
-def test_location_dwell_writes_snack_window_nudge(tmp_path: Path) -> None:
+def test_location_dwell_writes_snack_window_nudge_while_walking(tmp_path: Path) -> None:
     output_path = tmp_path / "nudges" / "location-dwell-snack.md"
 
     assert (
@@ -65,11 +67,36 @@ def test_location_dwell_writes_snack_window_nudge(tmp_path: Path) -> None:
     )
 
     content = output_path.read_text()
-    assert "Afternoon snack timing fits this stop." in content
+    assert "Afternoon snack timing fits your walk." in content
+    assert "Walking: 7 min" in content
     assert "Ginza Six" in content
 
 
-def test_location_dwell_writes_stopped_moving_nudge(tmp_path: Path) -> None:
+def test_location_dwell_writes_walking_nudge(tmp_path: Path) -> None:
+    output_path = tmp_path / "nudges" / "location-dwell-walk.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(WALK_FIXTURE_PATH),
+                "--output",
+                str(output_path),
+            ]
+        )
+        == 0
+    )
+
+    content = output_path.read_text()
+    assert "You are moving at a walking pace, so nearby options can stay lightweight." in content
+    assert "Walking: 11 min" in content
+    assert "Tokyo Station" in content
+
+
+def test_location_dwell_still_writes_stationary_nudge_for_dwell_fixture(tmp_path: Path) -> None:
     output_path = tmp_path / "nudges" / "location-dwell-stop.md"
 
     assert (
@@ -88,5 +115,7 @@ def test_location_dwell_writes_stopped_moving_nudge(tmp_path: Path) -> None:
     )
 
     content = output_path.read_text()
+    assert "stopped moving" in content
     assert "You have paused here long enough to surface local context." in content
+    assert "Walking:" not in content
     assert "Tokyo Station" in content

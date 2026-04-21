@@ -70,6 +70,8 @@ class LocationContextConnector:
                     "maps_url": maps_url,
                     "local_time": payload.get("local_time"),
                     "dwell_minutes": payload.get("dwell_minutes"),
+                    "walking_minutes": payload.get("walking_minutes"),
+                    "average_speed_m_s": payload.get("average_speed_m_s"),
                     "place_category": payload.get("place_category"),
                     "detected_reason": detected_reason,
                 },
@@ -79,7 +81,17 @@ class LocationContextConnector:
 
 def _infer_detected_reason(payload: dict[str, Any]) -> str:
     local_time = payload.get("local_time")
+    walking_minutes = payload.get("walking_minutes") or 0
     dwell_minutes = payload.get("dwell_minutes") or 0
+    if walking_minutes:
+        hour = _extract_hour(local_time)
+        if hour is None:
+            return "walking_nearby"
+        if 11 <= hour < 14 or 17 <= hour < 20:
+            return "meal_window"
+        if 14 <= hour < 17:
+            return "snack_window"
+        return "walking_nearby"
     if dwell_minutes and dwell_minutes < 15:
         return "transient_stop"
     hour = _extract_hour(local_time)
@@ -186,6 +198,61 @@ def _detect_dwell_payload(
     if age_minutes > max_staleness_minutes:
         return None
 
+    walking_segment = [latest]
+    for point in points[1:]:
+        gap_seconds = int(walking_segment[-1]["timestamp"]) - int(point["timestamp"])
+        if gap_seconds <= 0 or gap_seconds > 300:
+            break
+        walking_segment.append(point)
+
+    if len(walking_segment) >= 2:
+        earliest = walking_segment[-1]
+        walking_minutes = max(1, int((int(latest["timestamp"]) - int(earliest["timestamp"])) / 60))
+        sampled_speeds: list[float] = []
+        for index, point in enumerate(walking_segment[:-1]):
+            next_point = walking_segment[index + 1]
+            point_velocity = point.get("velocity")
+            if point_velocity is not None:
+                sampled_speeds.append(float(point_velocity))
+                continue
+            next_velocity = next_point.get("velocity")
+            if next_velocity is not None:
+                sampled_speeds.append(float(next_velocity))
+                continue
+            elapsed_seconds = int(point["timestamp"]) - int(next_point["timestamp"])
+            if elapsed_seconds <= 0:
+                continue
+            distance = _haversine_m(
+                float(point["lat"]),
+                float(point["lon"]),
+                float(next_point["lat"]),
+                float(next_point["lon"]),
+            )
+            sampled_speeds.append(distance / elapsed_seconds)
+        if sampled_speeds:
+            average_speed_m_s = sum(sampled_speeds) / len(sampled_speeds)
+            net_distance = _haversine_m(
+                float(latest["lat"]),
+                float(latest["lon"]),
+                float(earliest["lat"]),
+                float(earliest["lon"]),
+            )
+            if 0.6 <= average_speed_m_s <= 2.2 and walking_minutes >= 5 and net_distance >= 120:
+                local_dt = latest_dt.astimezone(JST)
+                detected_reason = _infer_runtime_reason(local_dt)
+                lat = float(latest["lat"])
+                lon = float(latest["lon"])
+                return {
+                    "place": f"{lat:.5f}, {lon:.5f}",
+                    "maps_url": f"https://maps.google.com/?q={lat},{lon}",
+                    "context": _build_runtime_context(detected_reason, walking_minutes),
+                    "local_time": local_dt.isoformat(),
+                    "walking_minutes": walking_minutes,
+                    "average_speed_m_s": round(average_speed_m_s, 2),
+                    "detected_reason": detected_reason,
+                    "arrived_at": datetime.fromtimestamp(int(earliest["timestamp"]), tz=timezone.utc).isoformat().replace("+00:00", "Z"),
+                }
+
     cluster = [latest]
     for point in points[1:]:
         distance = _haversine_m(
@@ -204,13 +271,13 @@ def _detect_dwell_payload(
         return None
 
     local_dt = latest_dt.astimezone(JST)
-    detected_reason = _infer_runtime_reason(local_dt)
+    detected_reason = _infer_stationary_reason(local_dt)
     lat = float(latest["lat"])
     lon = float(latest["lon"])
     return {
         "place": f"{lat:.5f}, {lon:.5f}",
         "maps_url": f"https://maps.google.com/?q={lat},{lon}",
-        "context": _build_runtime_context(detected_reason, dwell_minutes),
+        "context": _build_stationary_context(detected_reason, dwell_minutes),
         "local_time": local_dt.isoformat(),
         "dwell_minutes": dwell_minutes,
         "detected_reason": detected_reason,
@@ -234,13 +301,31 @@ def _infer_runtime_reason(local_dt: datetime) -> str:
         return "meal_window"
     if 14 <= hour < 17:
         return "snack_window"
+    return "walking_nearby"
+
+
+def _infer_stationary_reason(local_dt: datetime) -> str:
+    hour = local_dt.hour
+    if 11 <= hour < 14 or 17 <= hour < 20:
+        return "meal_window"
+    if 14 <= hour < 17:
+        return "snack_window"
     return "stopped_moving"
 
 
-def _build_runtime_context(reason: str, dwell_minutes: int) -> list[str]:
+def _build_runtime_context(reason: str, motion_minutes: int) -> list[str]:
+    base = [f"Walking for about {motion_minutes} minutes."]
+    if reason == "meal_window":
+        return ["Lunch window is open along your walk."] + base
+    if reason == "snack_window":
+        return ["Afternoon snack timing fits your walk."] + base
+    return ["You are moving at a walking pace, so nearby options can stay lightweight."] + base
+
+
+def _build_stationary_context(reason: str, dwell_minutes: int) -> list[str]:
     base = [f"Stopped here for about {dwell_minutes} minutes."]
     if reason == "meal_window":
-        return ["Meal timing is open for this stop."] + base
+        return ["Lunch window is open nearby."] + base
     if reason == "snack_window":
-        return ["Snack / coffee timing fits this stop."] + base
-    return ["Movement has paused long enough to surface local context."] + base
+        return ["Afternoon snack timing fits this stop."] + base
+    return ["You have paused here long enough to surface local context."] + base
