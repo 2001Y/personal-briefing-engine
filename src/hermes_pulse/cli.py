@@ -165,6 +165,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     delivery_succeeded = False
     pending_connector_cursor_update: tuple[list[CollectedItem], list[str], str] | None = None
+    pending_local_connector_health_update: tuple[list[CollectedItem], str] | None = None
     pending_source_registry_state_update: tuple[list[SourceRegistryEntry], list[CollectedItem], str, dict[str, str], set[str]] | None = None
     pending_suppression_update: tuple[list[CollectedItem], str, str, str] | None = None
     pending_feedback_update: tuple[list[CollectedItem], str, str] | None = None
@@ -216,9 +217,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "feed-update":
             markdown = _build_feed_update(args)
         elif args.command == "location-arrival":
-            markdown = _build_location_arrival(args)
+            items = _build_event_trigger_items("location.arrival.default", args)
+            markdown = render_location_arrival_mini_digest(items)
+            if args.state_db is not None:
+                pending_local_connector_health_update = (items, occurred_at)
         elif args.command == "location-dwell":
-            markdown = _build_location_dwell(args)
+            items = _build_event_trigger_items("location.dwell.default", args)
+            markdown = render_location_dwell_nudge(items)
+            if args.state_db is not None:
+                pending_local_connector_health_update = (items, occurred_at)
         elif args.command == "review-trigger-quality":
             items = _build_event_trigger_items("review.trigger_quality.default", args)
             markdown = render_trigger_quality_review(items)
@@ -266,6 +273,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 items=items,
                 occurred_at=occurred_at,
                 run_id=feedback_run_id,
+            )
+
+        if args.state_db is not None and pending_local_connector_health_update is not None:
+            items, occurred_at = pending_local_connector_health_update
+            _record_local_connector_health_from_items(
+                args.state_db,
+                items=items,
+                occurred_at=occurred_at,
             )
 
         if args.state_db is not None and pending_approval_action_update is not None:
@@ -358,6 +373,21 @@ def _x_source_for_signal_type(signal_type: str) -> str:
     }[signal_type]
 
 
+def _collect_x_signals_with_error_capture(
+    signal_types: list[str],
+    *,
+    source_errors: dict[str, str],
+    successful_sources: set[str],
+) -> list[CollectedItem]:
+    try:
+        items = XUrlConnector().collect(signal_types)
+    except Exception as exc:
+        source_errors["x_signals"] = str(exc)
+        return []
+    successful_sources.add("x_signals")
+    return items
+
+
 def _cursor_sort_key(raw_record_id: str) -> tuple[int, int | str]:
     if raw_record_id.isdigit():
         return (1, int(raw_record_id))
@@ -392,6 +422,27 @@ def _record_connector_cursors_from_items(
             last_poll_at=occurred_at,
             last_success_at=occurred_at,
         )
+
+
+def _record_local_connector_health_from_items(
+    path: Path,
+    *,
+    items: list[CollectedItem],
+    occurred_at: str,
+) -> None:
+    for item in items:
+        if item.source != "location_context":
+            continue
+        raw_record_id = item.provenance.raw_record_id if item.provenance is not None else None
+        upsert_connector_cursor(
+            path,
+            connector_id="location_context",
+            cursor=raw_record_id,
+            last_poll_at=occurred_at,
+            last_success_at=occurred_at,
+            last_error=None,
+        )
+        return
 
 
 def _record_source_registry_state(
@@ -757,13 +808,13 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
     notes_path = getattr(args, "notes", None)
     calendar_runner = _build_json_runner(calendar_fixture)
     gmail_runner = _build_json_runner(gmail_fixture)
+    occurred_at = (getattr(args, "now", None) or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
     audit_runner = _build_audit_runner(
         audit_fixture=audit_fixture,
         state_db=getattr(args, "state_db", None),
         source_registry=source_registry,
         occurred_at=occurred_at,
     )
-    occurred_at = (getattr(args, "now", None) or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
     trigger = TriggerEvent(
         id=f"event:{profile.id}",
         type=profile.event_type,
@@ -789,9 +840,9 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
         connectors["location_context"] = BoundConnector(
             lambda: LocationContextConnector(runner=lambda: load_location_context_fixture(location_fixture)).collect()
         )
-    if audit_fixture is not None:
+    if audit_runner is not None:
         connectors["audit_context"] = BoundConnector(
-            lambda: AuditContextConnector(runner=lambda: load_audit_context_fixture(audit_fixture)).collect()
+            lambda: AuditContextConnector(runner=audit_runner).collect()
         )
     return collect_for_trigger(trigger, profile, connectors)
 
@@ -843,7 +894,13 @@ def _build_digest_with_source_errors(command: str, args: argparse.Namespace) -> 
         connectors["gmail"] = BoundConnector(lambda: GmailConnector(runner=gmail_runner).collect())
     if args.x_signals:
         signal_types = [value.strip() for value in args.x_signals.split(",") if value.strip()]
-        connectors["x_signals"] = BoundConnector(lambda: XUrlConnector().collect(signal_types))
+        connectors["x_signals"] = BoundConnector(
+            lambda: _collect_x_signals_with_error_capture(
+                signal_types,
+                source_errors=source_errors,
+                successful_sources=successful_sources,
+            )
+        )
     if getattr(args, "grok_history", None) is not None:
         connectors["grok_history"] = BoundConnector(
             lambda: GrokHistoryConnector().collect(args.grok_history)
@@ -885,6 +942,77 @@ def _build_json_runner(path: Path | None) -> Callable[[], list[dict[str, object]
         return None
     payload = json.loads(path.read_text())
     return lambda: payload
+
+
+def _build_audit_runner(
+    *,
+    audit_fixture: Path | None,
+    state_db: Path | None,
+    source_registry: list[SourceRegistryEntry],
+    occurred_at: str,
+) -> Callable[[], dict[str, object]] | None:
+    if audit_fixture is not None:
+        return lambda: load_audit_context_fixture(audit_fixture)
+    if state_db is not None:
+        return lambda: _build_runtime_trigger_quality_audit(
+            state_db,
+            source_registry=source_registry,
+            occurred_at=occurred_at,
+        )
+    return None
+
+
+def _build_runtime_trigger_quality_audit(
+    path: Path,
+    *,
+    source_registry: list[SourceRegistryEntry],
+    occurred_at: str,
+) -> dict[str, object]:
+    observed_at = _parse_timestamp(occurred_at)
+    stale_inputs: list[str] = []
+    weak_sources: list[str] = []
+    source_threshold = timedelta(hours=24)
+    location_threshold = timedelta(hours=1)
+
+    with sqlite3.connect(path) as connection:
+        source_rows = {
+            registry_id: last_poll_at
+            for registry_id, last_poll_at in connection.execute(
+                "SELECT registry_id, last_poll_at FROM source_registry_state"
+            ).fetchall()
+        }
+        connector_rows = {
+            connector_id: last_success_at
+            for connector_id, last_success_at in connection.execute(
+                "SELECT connector_id, last_success_at FROM connector_cursors"
+            ).fetchall()
+        }
+
+    for entry in source_registry:
+        if entry.acquisition_mode not in {"rss_poll", "atom_poll", "known_source_search"}:
+            continue
+        last_poll_at = source_rows.get(entry.id)
+        if last_poll_at is None:
+            stale_inputs.append(f"{entry.id}: never_polled")
+            weak_sources.append(entry.id)
+            continue
+        if observed_at - _parse_timestamp(last_poll_at) > source_threshold:
+            stale_inputs.append(f"{entry.id}: stale_since={last_poll_at}")
+            weak_sources.append(entry.id)
+
+    last_location_success = connector_rows.get("location_context")
+    if last_location_success is None:
+        stale_inputs.append("location_context: never_collected")
+        weak_sources.append("location_context")
+    elif observed_at - _parse_timestamp(last_location_success) > location_threshold:
+        stale_inputs.append(f"location_context: stale_since={last_location_success}")
+        weak_sources.append("location_context")
+
+    payload: dict[str, object] = {}
+    if stale_inputs:
+        payload["stale_inputs"] = stale_inputs
+        payload["weak_sources"] = weak_sources
+    return payload
 
 
 def _parse_timestamp(value: str) -> datetime:

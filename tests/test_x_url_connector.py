@@ -42,7 +42,7 @@ def test_xurl_connector_collects_bookmarks_likes_and_reverse_chronological_home_
     }
     requested_paths: list[str] = []
 
-    def runner(path: str) -> dict:
+    def runner(path: str, auth_type: str) -> dict:
         requested_paths.append(path)
         return responses[path]
 
@@ -67,7 +67,7 @@ def test_xurl_connector_collects_bookmarks_likes_and_reverse_chronological_home_
 
 
 def test_xurl_connector_rejects_unknown_signal_type() -> None:
-    connector = XUrlConnector(runner=lambda path: {"data": {"id": "42", "username": "akita"}})
+    connector = XUrlConnector(runner=lambda path, auth_type: {"data": {"id": "42", "username": "akita"}})
 
     try:
         connector.collect(["for_you"])
@@ -75,3 +75,37 @@ def test_xurl_connector_rejects_unknown_signal_type() -> None:
         assert "Unsupported X signal type" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_xurl_connector_falls_back_to_oauth1_when_oauth2_fails() -> None:
+    requests: list[tuple[str, str]] = []
+
+    def runner(path: str, auth_type: str) -> dict:
+        requests.append((auth_type, path))
+        if auth_type == "oauth2":
+            raise RuntimeError("oauth2 missing")
+        responses = {
+            "/2/users/me": {"data": {"id": "42", "username": "akita"}},
+            "/2/users/42/bookmarks?max_results=100&tweet.fields=created_at,author_id,text": {
+                "data": [
+                    {
+                        "id": "100",
+                        "text": "Saved launch thread",
+                        "created_at": "2026-04-20T08:00:00Z",
+                        "author_id": "7",
+                    }
+                ],
+                "includes": {"users": [{"id": "7", "username": "openai"}]},
+            },
+        }
+        return responses[path]
+
+    items = XUrlConnector(runner=runner).collect(["bookmarks"])
+
+    assert requests == [
+        ("oauth2", "/2/users/me"),
+        ("oauth1", "/2/users/me"),
+        ("oauth1", "/2/users/42/bookmarks?max_results=100&tweet.fields=created_at,author_id,text"),
+    ]
+    assert len(items) == 1
+    assert items[0].source == "x_bookmarks"

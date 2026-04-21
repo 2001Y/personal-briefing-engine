@@ -182,3 +182,41 @@ def test_end_to_end_morning_digest_archives_feed_and_local_context_items(
         "notes",
     }
     assert any(item["id"].startswith("official-blog:") for item in raw_items)
+
+
+def test_morning_digest_continues_when_x_signals_fail(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch)
+    output_path = tmp_path / "deliveries" / "morning-digest.md"
+
+    class FailingXUrlConnector:
+        def collect(self, signal_types):
+            raise RuntimeError("x auth missing")
+
+    monkeypatch.setattr(hermes_pulse.cli, "XUrlConnector", FailingXUrlConnector)
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--feed-fixture",
+                str(FEED_FIXTURE_PATH),
+                "--search-fixture",
+                str(SEARCH_FIXTURE_PATH),
+                "--hermes-history",
+                str(HERMES_HISTORY_PATH),
+                "--notes",
+                str(NOTES_PATH),
+                "--x-signals",
+                "bookmarks,likes,home_timeline_reverse_chronological",
+                "--output",
+                str(output_path),
+            ]
+        )
+        == 0
+    )
+
+    markdown = output_path.read_text()
+    assert "Launch update" in markdown
+    assert "Morning planning" in markdown

@@ -3,6 +3,9 @@ import subprocess
 from collections.abc import Callable, Sequence
 from typing import Any
 
+
+Runner = Callable[[str, str], dict[str, Any]]
+
 from hermes_pulse.models import CitationLink, CollectedItem, IntentSignals, ItemTimestamps, Provenance
 
 
@@ -22,7 +25,7 @@ class XUrlConnector:
     id = "x_signals"
     source_family = "x"
 
-    def __init__(self, runner: Callable[[str], dict[str, Any]] | None = None) -> None:
+    def __init__(self, runner: Runner | None = None) -> None:
         self._runner = runner or _run_xurl_json
 
     def collect(self, signal_types: Sequence[str]) -> list[CollectedItem]:
@@ -33,7 +36,7 @@ class XUrlConnector:
         if not signal_types:
             return []
 
-        me_payload = self._runner("/2/users/me")
+        auth_type, me_payload = self._resolve_auth("/2/users/me")
         me = me_payload.get("data") or {}
         user_id = me.get("id")
         if not user_id:
@@ -42,9 +45,19 @@ class XUrlConnector:
         items: list[CollectedItem] = []
         for signal_type in signal_types:
             source, path_template = _SIGNAL_PATHS[signal_type]
-            payload = self._runner(path_template.format(user_id=user_id))
+            payload = self._runner(path_template.format(user_id=user_id), auth_type)
             items.extend(_parse_items(source, signal_type, payload))
         return items
+
+    def _resolve_auth(self, path: str) -> tuple[str, dict[str, Any]]:
+        last_error: Exception | None = None
+        for auth_type in ("oauth2", "oauth1"):
+            try:
+                return auth_type, self._runner(path, auth_type)
+            except Exception as exc:
+                last_error = exc
+        assert last_error is not None
+        raise last_error
 
 
 def _parse_items(source: str, signal_type: str, payload: dict[str, Any]) -> list[CollectedItem]:
@@ -95,9 +108,9 @@ def _title_from_text(text: str) -> str:
     return compact[:80] if compact else "X post"
 
 
-def _run_xurl_json(path: str) -> dict[str, Any]:
+def _run_xurl_json(path: str, auth_type: str) -> dict[str, Any]:
     result = subprocess.run(
-        ["xurl", "--auth", "oauth2", path],
+        ["xurl", "--auth", auth_type, path],
         check=True,
         capture_output=True,
         text=True,
