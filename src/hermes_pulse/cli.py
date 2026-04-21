@@ -165,7 +165,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     delivery_succeeded = False
     pending_connector_cursor_update: tuple[list[CollectedItem], list[str], str] | None = None
-    pending_local_connector_health_update: tuple[list[CollectedItem], str] | None = None
+    pending_local_connector_health_update: tuple[dict[str, str], set[str], list[CollectedItem], str] | None = None
     pending_source_registry_state_update: tuple[list[SourceRegistryEntry], list[CollectedItem], str, dict[str, str], set[str]] | None = None
     pending_suppression_update: tuple[list[CollectedItem], str, str, str] | None = None
     pending_feedback_update: tuple[list[CollectedItem], str, str] | None = None
@@ -217,15 +217,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         elif args.command == "feed-update":
             markdown = _build_feed_update(args)
         elif args.command == "location-arrival":
-            items = _build_event_trigger_items("location.arrival.default", args)
-            markdown = render_location_arrival_mini_digest(items)
-            if args.state_db is not None:
-                pending_local_connector_health_update = (items, occurred_at)
+            markdown = _build_location_arrival(args)
         elif args.command == "location-dwell":
-            items = _build_event_trigger_items("location.dwell.default", args)
+            location_errors: dict[str, str] = {}
+            location_successful: set[str] = set()
+            items = _collect_location_context_items(
+                location_fixture=getattr(args, "location_fixture", None),
+                error_handler=lambda connector_id, message: location_errors.__setitem__(connector_id, message),
+                success_handler=lambda connector_id: location_successful.add(connector_id),
+            )
             markdown = render_location_dwell_nudge(items)
             if args.state_db is not None:
-                pending_local_connector_health_update = (items, occurred_at)
+                pending_local_connector_health_update = (location_errors, location_successful, items, occurred_at)
         elif args.command == "review-trigger-quality":
             items = _build_event_trigger_items("review.trigger_quality.default", args)
             markdown = render_trigger_quality_review(items)
@@ -276,9 +279,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
 
         if args.state_db is not None and pending_local_connector_health_update is not None:
-            items, occurred_at = pending_local_connector_health_update
-            _record_local_connector_health_from_items(
+            location_errors, location_successful, items, occurred_at = pending_local_connector_health_update
+            _record_local_connector_health(
                 args.state_db,
+                error_messages=location_errors,
+                successful_connectors=location_successful,
                 items=items,
                 occurred_at=occurred_at,
             )
@@ -424,16 +429,23 @@ def _record_connector_cursors_from_items(
         )
 
 
-def _record_local_connector_health_from_items(
+def _record_local_connector_health(
     path: Path,
     *,
+    error_messages: dict[str, str],
+    successful_connectors: set[str],
     items: list[CollectedItem],
     occurred_at: str,
 ) -> None:
-    for item in items:
-        if item.source != "location_context":
-            continue
-        raw_record_id = item.provenance.raw_record_id if item.provenance is not None else None
+    if "location_context" in successful_connectors:
+        raw_record_id = next(
+            (
+                item.provenance.raw_record_id
+                for item in items
+                if item.source == "location_context" and item.provenance is not None
+            ),
+            None,
+        )
         upsert_connector_cursor(
             path,
             connector_id="location_context",
@@ -443,6 +455,17 @@ def _record_local_connector_health_from_items(
             last_error=None,
         )
         return
+    error_message = error_messages.get("location_context")
+    if error_message is not None:
+        existing = _get_connector_cursor_state(path, connector_id="location_context")
+        upsert_connector_cursor(
+            path,
+            connector_id="location_context",
+            cursor=None if existing is None else existing["cursor"],
+            last_poll_at=occurred_at,
+            last_success_at=None if existing is None else existing["last_success_at"],
+            last_error=error_message,
+        )
 
 
 def _record_source_registry_state(
@@ -501,6 +524,21 @@ def _get_source_registry_state(path: Path, *, registry_id: str) -> dict[str, str
         "last_seen_item_ids": row[0],
         "last_promoted_item_ids": row[1],
         "notes": row[2],
+    }
+
+
+def _get_connector_cursor_state(path: Path, *, connector_id: str) -> dict[str, str | None] | None:
+    with sqlite3.connect(path) as connection:
+        row = connection.execute(
+            "SELECT cursor, last_success_at, last_error FROM connector_cursors WHERE connector_id = ?",
+            (connector_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    return {
+        "cursor": row[0],
+        "last_success_at": row[1],
+        "last_error": row[2],
     }
 
 
@@ -771,8 +809,21 @@ def _build_location_arrival(args: argparse.Namespace) -> str | None:
 
 
 def _build_location_dwell(args: argparse.Namespace) -> str | None:
-    items = _build_event_trigger_items("location.dwell.default", args)
+    items = _collect_location_context_items(location_fixture=getattr(args, "location_fixture", None))
     return render_location_dwell_nudge(items)
+
+
+def _collect_location_context_items(
+    *,
+    location_fixture: Path | None,
+    error_handler: Callable[[str, str], None] | None = None,
+    success_handler: Callable[[str], None] | None = None,
+) -> list[CollectedItem]:
+    return LocationContextConnector(
+        runner=(lambda: load_location_context_fixture(location_fixture)) if location_fixture is not None else None,
+        error_handler=error_handler,
+        success_handler=success_handler,
+    ).collect()
 
 
 def _build_review_trigger_quality(args: argparse.Namespace) -> str | None:
@@ -830,16 +881,18 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
             lambda: KnownSourceSearchConnector(fetcher=search_fetcher).collect(source_registry)
         ),
     }
+    if location_fixture is not None or profile.id == "location.dwell.default":
+        connectors["location_context"] = BoundConnector(
+            lambda: LocationContextConnector(
+                runner=(lambda: load_location_context_fixture(location_fixture)) if location_fixture is not None else None
+            ).collect()
+        )
     if calendar_runner is not None:
         connectors["google_calendar"] = BoundConnector(lambda: GoogleCalendarConnector(runner=calendar_runner).collect())
     if gmail_runner is not None:
         connectors["gmail"] = BoundConnector(lambda: GmailConnector(runner=gmail_runner).collect())
     if notes_path is not None:
         connectors["notes"] = BoundConnector(lambda: NotesConnector().collect(notes_path))
-    if location_fixture is not None:
-        connectors["location_context"] = BoundConnector(
-            lambda: LocationContextConnector(runner=lambda: load_location_context_fixture(location_fixture)).collect()
-        )
     if audit_runner is not None:
         connectors["audit_context"] = BoundConnector(
             lambda: AuditContextConnector(runner=audit_runner).collect()

@@ -909,6 +909,39 @@ def test_location_dwell_records_location_context_freshness_in_state_db(tmp_path:
     assert row == ("location_context", "2026-04-20T12:00:00Z", "2026-04-20T12:00:00Z", None)
 
 
+def test_location_dwell_records_location_context_poll_when_live_runner_returns_no_item(monkeypatch, tmp_path: Path) -> None:
+    import hermes_pulse.connectors.location_context as location_context_module
+
+    monkeypatch.setattr(location_context_module, "_run_location_context", lambda: {})
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "nudges" / "location-dwell-empty.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert not output_path.exists()
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT connector_id, cursor, last_poll_at, last_success_at, last_error FROM connector_cursors WHERE connector_id = 'location_context'"
+        ).fetchone()
+
+    assert row == ("location_context", None, "2026-04-20T12:30:00Z", "2026-04-20T12:30:00Z", None)
+
+
 def test_review_trigger_quality_skips_fresh_location_context(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "reviews" / "trigger-quality.md"
