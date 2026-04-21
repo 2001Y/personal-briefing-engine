@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -21,8 +22,15 @@ class KnownSourceSearchConnector:
     id = "known_source_search"
     source_family = "known_source_search"
 
-    def __init__(self, fetcher: Callable[[str], str] | None = None) -> None:
+    def __init__(
+        self,
+        fetcher: Callable[[str], str] | None = None,
+        error_handler: Callable[[str, str], None] | None = None,
+        success_handler: Callable[[str], None] | None = None,
+    ) -> None:
         self._fetcher = fetcher or _fetch_url
+        self._error_handler = error_handler
+        self._success_handler = success_handler
 
     def collect(self, entries: Sequence[SourceRegistryEntry]) -> list[CollectedItem]:
         items: list[CollectedItem] = []
@@ -31,10 +39,18 @@ class KnownSourceSearchConnector:
                 continue
             query = _build_search_query(entry)
             try:
-                payload = self._fetcher(_build_search_url(query))
-                items.extend(self._parse_items(entry, payload, query))
+                direct_items = _collect_direct_items(entry, fetcher=self._fetcher, query=query)
+                if direct_items is not None:
+                    items.extend(direct_items)
+                else:
+                    payload = self._fetcher(_build_search_url(query))
+                    items.extend(self._parse_items(entry, payload, query))
+                if self._success_handler is not None:
+                    self._success_handler(entry.id)
             except Exception as exc:
                 logger.warning("Skipping known source search %s after fetch/parse failure: %s", entry.id, exc)
+                if self._error_handler is not None:
+                    self._error_handler(entry.id, str(exc))
         return items
 
     def _parse_items(self, entry: SourceRegistryEntry, payload: str, query: str) -> list[CollectedItem]:
@@ -156,6 +172,62 @@ def _fetch_url(url: str) -> str:
     request = Request(url, headers=DEFAULT_HEADERS)
     with urlopen(request) as response:
         return response.read().decode("utf-8")
+
+
+def _collect_direct_items(
+    entry: SourceRegistryEntry,
+    *,
+    fetcher: Callable[[str], str],
+    query: str,
+) -> list[CollectedItem] | None:
+    if entry.domain == 'anthropic.com':
+        payload = fetcher('https://www.anthropic.com/sitemap.xml')
+        urls = re.findall(r'<loc>(https://www\.anthropic\.com/news[^<]+)</loc>', payload)
+        return _build_direct_items(entry, urls, query=query)
+    if entry.domain == 'x.ai':
+        payload = fetcher('https://x.ai/news')
+        urls = []
+        for href in re.findall(r'href=["\'](/news/[^"\'#?]+|https://x\.ai/news/[^"\'#?]+)["\']', payload):
+            if href.startswith('/news/'):
+                href = f'https://x.ai{href}'
+            urls.append(href)
+        deduped = []
+        seen = set()
+        for url in urls:
+            if url not in seen:
+                seen.add(url)
+                deduped.append(url)
+        return _build_direct_items(entry, deduped, query=query)
+    return None
+
+
+def _build_direct_items(entry: SourceRegistryEntry, urls: Sequence[str], *, query: str) -> list[CollectedItem]:
+    relation = 'primary' if entry.authority_tier == 'primary' else 'secondary'
+    items: list[CollectedItem] = []
+    for rank, resolved_url in enumerate(urls, start=1):
+        if not _url_matches_domain(resolved_url, entry.domain):
+            continue
+        slug = resolved_url.rstrip('/').split('/')[-1].replace('-', ' ')
+        title = slug[:1].upper() + slug[1:] if slug else resolved_url
+        items.append(
+            CollectedItem(
+                id=f"{entry.id}:{resolved_url}",
+                source=entry.id,
+                source_kind='document',
+                title=title,
+                url=resolved_url,
+                provenance=Provenance(
+                    provider=entry.domain,
+                    acquisition_mode=entry.acquisition_mode,
+                    authority_tier=entry.authority_tier,
+                    primary_source_url=resolved_url,
+                    raw_record_id=resolved_url,
+                ),
+                citation_chain=[CitationLink(label=title, url=resolved_url, relation=relation)],
+                metadata={'search_query': query, 'search_rank': rank},
+            )
+        )
+    return items
 
 
 def _resolve_result_url(url: str | None) -> str | None:

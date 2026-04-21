@@ -6,6 +6,18 @@ from hermes_pulse.models import SourceRegistryEntry
 
 
 FIXTURE_HTML = Path("fixtures/search_samples/known_source_results.html").read_text()
+ANTHROPIC_SITEMAP_XML = """<?xml version='1.0' encoding='UTF-8'?>
+<urlset xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'>
+  <url><loc>https://www.anthropic.com/news/introducing-claude-opus-4-7</loc></url>
+  <url><loc>https://www.anthropic.com/news/claude-for-financial-services</loc></url>
+</urlset>
+"""
+XAI_NEWS_HTML = """<!doctype html><html><body>
+<a href='/news/grok-4'>Grok 4</a>
+<a href='/news/grok-business'>Grok Business</a>
+<a href='/about'>About</a>
+</body></html>
+"""
 
 
 def test_known_source_search_connector_collects_domain_constrained_results_with_provenance() -> None:
@@ -91,7 +103,7 @@ def test_known_source_search_connector_does_not_duplicate_site_scope_when_hint_a
 
     def fetcher(url: str) -> str:
         requested_urls.append(url)
-        return FIXTURE_HTML
+        return ANTHROPIC_SITEMAP_XML if url == "https://www.anthropic.com/sitemap.xml" else FIXTURE_HTML
 
     entry = SourceRegistryEntry(
         id="anthropic-newsroom",
@@ -105,6 +117,87 @@ def test_known_source_search_connector_does_not_duplicate_site_scope_when_hint_a
 
     items = KnownSourceSearchConnector(fetcher=fetcher).collect([entry])
 
-    assert len(items) == 0
-    parsed = urlparse(requested_urls[0])
-    assert parse_qs(parsed.query)["q"] == ["site:anthropic.com/news Anthropic announcement"]
+    assert requested_urls == ["https://www.anthropic.com/sitemap.xml"]
+    assert [item.url for item in items] == [
+        "https://www.anthropic.com/news/introducing-claude-opus-4-7",
+        "https://www.anthropic.com/news/claude-for-financial-services",
+    ]
+
+
+def test_known_source_search_connector_uses_anthropic_sitemap_when_supported() -> None:
+    requested_urls: list[str] = []
+
+    def fetcher(url: str) -> str:
+        requested_urls.append(url)
+        if url == "https://www.anthropic.com/sitemap.xml":
+            return ANTHROPIC_SITEMAP_XML
+        raise AssertionError(url)
+
+    entry = SourceRegistryEntry(
+        id="anthropic-newsroom",
+        source_family="official_lab_news",
+        domain="anthropic.com",
+        title="Anthropic Newsroom",
+        acquisition_mode="known_source_search",
+        authority_tier="primary",
+        search_hints=["site:anthropic.com/news Anthropic announcement"],
+    )
+
+    items = KnownSourceSearchConnector(fetcher=fetcher).collect([entry])
+
+    assert requested_urls == ["https://www.anthropic.com/sitemap.xml"]
+    assert [item.url for item in items] == [
+        "https://www.anthropic.com/news/introducing-claude-opus-4-7",
+        "https://www.anthropic.com/news/claude-for-financial-services",
+    ]
+
+
+def test_known_source_search_connector_uses_xai_news_page_when_supported() -> None:
+    requested_urls: list[str] = []
+
+    def fetcher(url: str) -> str:
+        requested_urls.append(url)
+        if url == "https://x.ai/news":
+            return XAI_NEWS_HTML
+        raise AssertionError(url)
+
+    entry = SourceRegistryEntry(
+        id="xai-news",
+        source_family="official_lab_news",
+        domain="x.ai",
+        title="xAI News",
+        acquisition_mode="known_source_search",
+        authority_tier="primary",
+        search_hints=["site:x.ai/news xAI announcement"],
+    )
+
+    items = KnownSourceSearchConnector(fetcher=fetcher).collect([entry])
+
+    assert requested_urls == ["https://x.ai/news"]
+    assert [item.url for item in items] == [
+        "https://x.ai/news/grok-4",
+        "https://x.ai/news/grok-business",
+    ]
+
+
+def test_known_source_search_connector_reports_per_source_errors_to_callback() -> None:
+    entry = SourceRegistryEntry(
+        id="discovery-only-source",
+        source_family="discovery_blog",
+        domain="discover.example.net",
+        title="Discovery Source",
+        acquisition_mode="known_source_search",
+        authority_tier="discovery_only",
+        search_hints=["rumors", "supply chain"],
+    )
+    reported_errors: list[tuple[str, str]] = []
+
+    connector = KnownSourceSearchConnector(
+        fetcher=lambda url: (_ for _ in ()).throw(TimeoutError("search timed out")),
+        error_handler=lambda entry_id, message: reported_errors.append((entry_id, message)),
+    )
+
+    items = connector.collect([entry])
+
+    assert items == []
+    assert reported_errors == [("discovery-only-source", "search timed out")]
