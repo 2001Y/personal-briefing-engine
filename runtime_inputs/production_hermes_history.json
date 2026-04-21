@@ -1,0 +1,6 @@
+{
+  "session_id": "pulse-production-context-20260421",
+  "title": "Pulse production context: X / Grok / ChatGPT / delivery",
+  "summary": "最近の関連スレッド要約: 1) X は official path として xurl を採用済みだが、live auth は未成立。現在の ~/.xurl は oauth2 なし、oauth1/bearer 表示も実体は空で、本番朝刊へは未接続。2) Grok は consumer full export 未確認で、cookie だけでは conversations API が 401/403。現実的には Chrome Profile 4 の履歴 URL manifest と raw HTML fallback までは確保済み。3) ChatGPT は official export 優先で、privacy.openai.com の export request 導線を使う方針。4) 朝刊の本線は launchd + direct delivery + Codex CLI で、Hermes cron は削除済み。5) 現在の本番朝刊で stable に入れられる local context は Hermes 履歴要約と notes。",
+  "created_at": "2026-04-21T10:55:00+09:00"
+}
