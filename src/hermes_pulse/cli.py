@@ -20,6 +20,7 @@ from hermes_pulse.connectors.known_source_search import KnownSourceSearchConnect
 from hermes_pulse.connectors.location_context import LocationContextConnector, load_location_context_fixture
 from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
+from hermes_pulse.exporters.chatgpt_export_prep import ChatGPTExportPreparer
 from hermes_pulse.exporters.grok_browser_export import GrokBrowserExporter
 from hermes_pulse.db import (
     get_approval_action_record,
@@ -98,6 +99,7 @@ def build_parser() -> argparse.ArgumentParser:
             "expire-suppression",
             "supersede-suppression",
             "refresh-grok-history",
+            "prepare-chatgpt-history",
             "state-summary",
         ),
     )
@@ -114,6 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--notes", type=Path)
     parser.add_argument("--archive-root", type=Path)
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--input-file", type=Path)
     parser.add_argument("--cdp-port", type=int, default=9223)
     parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--state-db", type=Path)
@@ -168,6 +171,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.output_dir is None:
             raise ValueError("refresh-grok-history requires --output-dir")
         GrokBrowserExporter(cdp_port=args.cdp_port).export(args.output_dir, page_size=args.page_size)
+        return 0
+    if args.command == "prepare-chatgpt-history":
+        if args.input_file is None or args.output_dir is None:
+            raise ValueError("prepare-chatgpt-history requires --input-file and --output-dir")
+        ChatGPTExportPreparer().prepare(args.input_file, args.output_dir)
         return 0
     if args.command == "state-summary":
         if args.state_db is None:
