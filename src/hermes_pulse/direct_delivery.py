@@ -1,7 +1,8 @@
 import argparse
 import importlib.util
 import re
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -10,11 +11,13 @@ from typing import Any, Protocol
 from hermes_pulse.archive import write_morning_digest_archive
 from hermes_pulse.cli import _build_morning_digest
 from hermes_pulse.summarization import CodexCliSummarizer
-from hermes_pulse.summarization.base import CODEX_DIGEST_RELATIVE_PATH
+from hermes_pulse.summarization.base import CODEX_DIGEST_RELATIVE_PATH, SummaryArtifact
+from hermes_pulse.summarization.codex_cli import DEFAULT_CODEX_MODEL, DEFAULT_SUMMARY_FORMAT
 
 
 DEFAULT_SLACK_DIRECT_PATH = Path.home() / ".hermes" / "scripts" / "slack_direct.py"
 DEFAULT_SLACK_MESSAGE_LIMIT = 3500
+DEFAULT_RETRY_DELAYS_SECONDS = (300, 300)
 MARKDOWN_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
 
 
@@ -52,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--notes", type=Path)
     parser.add_argument("--archive-root", type=Path)
     parser.add_argument("--x-signals")
+    parser.add_argument("--codex-model", default=DEFAULT_CODEX_MODEL)
+    parser.add_argument("--summary-format", default=DEFAULT_SUMMARY_FORMAT)
     parser.add_argument("--channel", required=True)
     parser.add_argument("--thread-ts")
     return parser
@@ -75,13 +80,43 @@ def run_morning_digest_direct_delivery(
         archive_root=archive_root,
         archive_date=date.today().isoformat(),
     )
-    CodexCliSummarizer().summarize_archive(archive_directory)
+    _summarize_archive_with_retries(
+        archive_directory,
+        codex_model=args.codex_model,
+        summary_format=args.summary_format,
+    )
     return post_canonical_digest_to_slack(
         archive_directory,
         channel=args.channel,
         thread_ts=args.thread_ts,
         post_message=post_message,
     )
+
+
+def _summarize_archive_with_retries(
+    archive_directory: Path,
+    *,
+    codex_model: str = DEFAULT_CODEX_MODEL,
+    summary_format: str = DEFAULT_SUMMARY_FORMAT,
+    retry_delays_seconds: Sequence[int] = DEFAULT_RETRY_DELAYS_SECONDS,
+    summarizer_factory: Callable[..., Any] | None = None,
+    sleep: Callable[[int], None] = time.sleep,
+) -> SummaryArtifact:
+    last_error: Exception | None = None
+    attempts = len(tuple(retry_delays_seconds)) + 1
+    delays = list(retry_delays_seconds)
+    factory = summarizer_factory or CodexCliSummarizer
+    for attempt_index in range(attempts):
+        try:
+            summarizer = factory(model=codex_model, summary_format=summary_format)
+            return summarizer.summarize_archive(archive_directory)
+        except Exception as error:
+            last_error = error
+            if attempt_index >= len(delays):
+                break
+            sleep(delays[attempt_index])
+    assert last_error is not None
+    raise last_error
 
 
 def post_canonical_digest_to_slack(

@@ -13,6 +13,8 @@ FEED_FIXTURE_PATH = ROOT / "fixtures/feed_samples/official_feed.xml"
 SEARCH_FIXTURE_PATH = ROOT / "fixtures/search_samples/known_source_results.html"
 HERMES_HISTORY_PATH = ROOT / "fixtures/hermes_history/sample_session.json"
 NOTES_PATH = ROOT / "fixtures/notes/sample_notes.md"
+DEFAULT_CODEX_MODEL = "gpt-5.4"
+DEFAULT_SUMMARY_FORMAT = "briefing-v1"
 
 
 def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path: Path) -> None:
@@ -185,6 +187,10 @@ def test_main_runs_morning_digest_pipeline_and_posts_exact_canonical_digest(
     codex_calls: list[Path] = []
 
     class StubCodexCliSummarizer:
+        def __init__(self, *, model: str = DEFAULT_CODEX_MODEL, summary_format: str = DEFAULT_SUMMARY_FORMAT) -> None:
+            assert model == DEFAULT_CODEX_MODEL
+            assert summary_format == DEFAULT_SUMMARY_FORMAT
+
         def summarize_archive(self, archive_directory: str | Path) -> SummaryArtifact:
             archive_directory = Path(archive_directory)
             codex_calls.append(archive_directory)
@@ -256,3 +262,84 @@ def test_main_runs_morning_digest_pipeline_and_posts_exact_canonical_digest(
             "unfurl_media": False,
         }
     ]
+
+
+def test_build_parser_accepts_codex_model_and_summary_format() -> None:
+    args = direct_delivery.build_parser().parse_args(
+        [
+            "--channel",
+            "D123",
+            "--codex-model",
+            DEFAULT_CODEX_MODEL,
+            "--summary-format",
+            DEFAULT_SUMMARY_FORMAT,
+        ]
+    )
+
+    assert args.codex_model == DEFAULT_CODEX_MODEL
+    assert args.summary_format == DEFAULT_SUMMARY_FORMAT
+
+
+def test_summarize_archive_with_retries_uses_requested_model_and_format() -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeSummarizer:
+        def summarize_archive(self, archive_directory: str | Path) -> SummaryArtifact:
+            calls.append({"archive_directory": str(archive_directory)})
+            return SummaryArtifact(path=Path("/tmp/codex-digest.md"), content="# digest")
+
+    artifact = direct_delivery._summarize_archive_with_retries(
+        Path("/tmp/archive"),
+        codex_model=DEFAULT_CODEX_MODEL,
+        summary_format=DEFAULT_SUMMARY_FORMAT,
+        retry_delays_seconds=(),
+        summarizer_factory=lambda **kwargs: FakeSummarizer(),
+        sleep=lambda _seconds: None,
+    )
+
+    assert artifact.content == "# digest"
+    assert calls == [{"archive_directory": "/tmp/archive"}]
+
+
+def test_summarize_archive_with_retries_retries_twice_after_failures() -> None:
+    attempts: list[int] = []
+    sleeps: list[int] = []
+
+    class FlakySummarizer:
+        def summarize_archive(self, archive_directory: str | Path) -> SummaryArtifact:
+            attempts.append(len(attempts) + 1)
+            if len(attempts) < 3:
+                raise RuntimeError("temporary high demand")
+            return SummaryArtifact(path=Path("/tmp/codex-digest.md"), content="# ok")
+
+    artifact = direct_delivery._summarize_archive_with_retries(
+        Path("/tmp/archive"),
+        retry_delays_seconds=(300, 300),
+        summarizer_factory=lambda **kwargs: FlakySummarizer(),
+        sleep=sleeps.append,
+    )
+
+    assert artifact.content == "# ok"
+    assert attempts == [1, 2, 3]
+    assert sleeps == [300, 300]
+
+
+def test_summarize_archive_with_retries_raises_after_exhausting_retries() -> None:
+    attempts: list[int] = []
+    sleeps: list[int] = []
+
+    class AlwaysFailingSummarizer:
+        def summarize_archive(self, archive_directory: str | Path) -> SummaryArtifact:
+            attempts.append(len(attempts) + 1)
+            raise RuntimeError("temporary high demand")
+
+    with pytest.raises(RuntimeError, match="temporary high demand"):
+        direct_delivery._summarize_archive_with_retries(
+            Path("/tmp/archive"),
+            retry_delays_seconds=(300, 300),
+            summarizer_factory=lambda **kwargs: AlwaysFailingSummarizer(),
+            sleep=sleeps.append,
+        )
+
+    assert attempts == [1, 2, 3]
+    assert sleeps == [300, 300]

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
+from hermes_pulse.summarization.codex_cli import DEFAULT_CODEX_MODEL, DEFAULT_SUMMARY_FORMAT
 
 DEFAULT_LAUNCHD_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 DEFAULT_WRAPPER_FILENAME = "run-hermes-pulse-direct-delivery.sh"
@@ -24,6 +25,8 @@ class DirectDeliveryWrapperSpec:
     hermes_history: Path | None = None
     notes: Path | None = None
     x_signals: str | None = None
+    codex_model: str = DEFAULT_CODEX_MODEL
+    summary_format: str = DEFAULT_SUMMARY_FORMAT
     working_directory: Path | None = None
 
 
@@ -77,6 +80,7 @@ def build_direct_delivery_program_arguments(spec: DirectDeliveryWrapperSpec) -> 
         args.extend(["--notes", str(spec.notes)])
     if spec.x_signals is not None:
         args.extend(["--x-signals", spec.x_signals])
+    args.extend(["--codex-model", spec.codex_model, "--summary-format", spec.summary_format])
     return args
 
 

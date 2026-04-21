@@ -23,6 +23,8 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
         thread_ts="1712345.6789",
         archive_root=Path("/Users/akitani/Pulse Archive"),
         x_signals="bookmarks,likes,home_timeline_reverse_chronological",
+        codex_model="gpt-5.4",
+        summary_format="briefing-v1",
     )
 
     wrapper = render_direct_delivery_wrapper(spec)
@@ -44,6 +46,10 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
         "/Users/akitani/Pulse Archive",
         "--x-signals",
         "bookmarks,likes,home_timeline_reverse_chronological",
+        "--codex-model",
+        "gpt-5.4",
+        "--summary-format",
+        "briefing-v1",
     ]
 
 
@@ -82,6 +88,8 @@ def test_generate_launchd_artifacts_writes_wrapper_and_plist_to_output_directory
             channel="C123456",
             archive_root=Path("/Users/akitani/Pulse"),
             x_signals="bookmarks,likes",
+            codex_model="gpt-5.4",
+            summary_format="briefing-v1",
         ),
         plist_spec=LaunchdPlistSpec(
             label="ai.hermes.pulse.direct-delivery",
@@ -111,6 +119,10 @@ def test_generate_launchd_artifacts_writes_wrapper_and_plist_to_output_directory
         "/Users/akitani/Pulse",
         "--x-signals",
         "bookmarks,likes",
+        "--codex-model",
+        "gpt-5.4",
+        "--summary-format",
+        "briefing-v1",
     ]
 
     plist_payload = plistlib.loads(artifacts.plist_path.read_bytes())
