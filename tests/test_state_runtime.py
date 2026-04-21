@@ -7,6 +7,9 @@ import pytest
 import hermes_pulse.cli
 from hermes_pulse.db import initialize_database
 from hermes_pulse.db import list_active_suppression_subjects
+from hermes_pulse.db import record_approval_action
+from hermes_pulse.db import record_feedback
+from hermes_pulse.db import upsert_connector_cursor
 from hermes_pulse.models import Provenance
 from hermes_pulse.summarization.base import SummaryArtifact
 
@@ -2282,8 +2285,8 @@ def test_morning_digest_records_chatgpt_and_grok_history_connector_cursors(monke
         ).fetchall()
 
     assert cursors == [
-        ("chatgpt_history", "chatcmpl-conv-1", "2026-04-20T10:00:00Z", "2026-04-20T10:00:00Z"),
-        ("grok_history", "conv-1", "2026-04-20T10:00:00Z", "2026-04-20T10:00:00Z"),
+        ("chatgpt_history", "chatcmpl-conv-1", "2026-04-20T10:00:00Z", "1713600300.0"),
+        ("grok_history", "conv-1", "2026-04-20T10:00:00Z", "2026-04-21T01:27:11.327Z"),
     ]
 
 
@@ -2345,7 +2348,247 @@ def test_empty_chatgpt_history_poll_preserves_existing_cursor(monkeypatch, tmp_p
             "SELECT connector_id, cursor, last_poll_at, last_success_at FROM connector_cursors WHERE connector_id = 'chatgpt_history'"
         ).fetchone()
 
-    assert cursor == ("chatgpt_history", "chatcmpl-conv-1", "2026-04-20T10:10:00Z", "2026-04-20T10:10:00Z")
+    assert cursor == ("chatgpt_history", "chatcmpl-conv-1", "2026-04-20T10:10:00Z", "1713600300.0")
+
+
+def test_cursor_sort_key_orders_history_ids_by_numeric_suffix() -> None:
+    assert hermes_pulse.cli._cursor_sort_key("conv-10") > hermes_pulse.cli._cursor_sort_key("conv-2")
+    assert hermes_pulse.cli._cursor_sort_key("chatcmpl-conv-10") > hermes_pulse.cli._cursor_sort_key("chatcmpl-conv-2")
+
+
+def test_morning_digest_filters_already_seen_chatgpt_history_items(monkeypatch, tmp_path: Path) -> None:
+    calls = _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    archive_root = tmp_path / "Pulse"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--chatgpt-history",
+                str(CHATGPT_HISTORY_PATH),
+                "--state-db",
+                str(database_path),
+                "--archive-root",
+                str(archive_root),
+                "--now",
+                "2026-04-20T10:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    updated_export = tmp_path / "chatgpt-updated"
+    conversations_dir = updated_export / "extracted" / "conversations"
+    conversations_dir.mkdir(parents=True)
+    (updated_export / "manifest.json").write_text((CHATGPT_HISTORY_PATH / "manifest.json").read_text())
+    (conversations_dir / "user.json").write_text(
+        (CHATGPT_HISTORY_PATH / "extracted" / "conversations" / "user.json").read_text()
+    )
+    conversations = json.loads((CHATGPT_HISTORY_PATH / "extracted" / "conversations" / "conversations.json").read_text())
+    conversations.append(
+        {
+            "id": "chatcmpl-conv-2",
+            "title": "新しい会話",
+            "create_time": 1713600400.0,
+            "update_time": 1713600500.0,
+            "mapping": {
+                "node-root": {"id": "node-root", "message": None, "parent": None, "children": ["node-user"]},
+                "node-user": {
+                    "id": "node-user",
+                    "parent": "node-root",
+                    "children": ["node-assistant"],
+                    "message": {
+                        "id": "msg-user-2",
+                        "author": {"role": "user"},
+                        "create_time": 1713600401.0,
+                        "content": {"content_type": "text", "parts": ["大阪も寄るべき？"]},
+                    },
+                },
+                "node-assistant": {
+                    "id": "node-assistant",
+                    "parent": "node-user",
+                    "children": [],
+                    "message": {
+                        "id": "msg-assistant-2",
+                        "author": {"role": "assistant"},
+                        "create_time": 1713600405.0,
+                        "content": {"content_type": "text", "parts": ["京都中心なら絞る方が楽です。"]},
+                    },
+                },
+            },
+        }
+    )
+    (conversations_dir / "conversations.json").write_text(json.dumps(conversations))
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--chatgpt-history",
+                str(updated_export),
+                "--state-db",
+                str(database_path),
+                "--archive-root",
+                str(archive_root),
+                "--now",
+                "2026-04-20T10:15:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert [item["id"] for item in calls[-1]["raw_items"] if item["source"] == "chatgpt_history"] == ["chatcmpl-conv-2"]
+
+    with sqlite3.connect(database_path) as connection:
+        cursor = connection.execute(
+            "SELECT connector_id, cursor FROM connector_cursors WHERE connector_id = 'chatgpt_history'"
+        ).fetchone()
+
+    assert cursor == ("chatgpt_history", "chatcmpl-conv-2")
+
+
+def test_morning_digest_filters_already_seen_grok_history_items(monkeypatch, tmp_path: Path) -> None:
+    calls = _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    archive_root = tmp_path / "Pulse"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--grok-history",
+                str(GROK_HISTORY_PATH),
+                "--state-db",
+                str(database_path),
+                "--archive-root",
+                str(archive_root),
+                "--now",
+                "2026-04-20T10:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    updated_export = tmp_path / "grok-updated"
+    (updated_export / "responses").mkdir(parents=True)
+    conversations_payload = json.loads((GROK_HISTORY_PATH / "conversations.index.json").read_text())
+    conversations_payload["conversations"].append(
+        {
+            "conversationId": "conv-2",
+            "title": "新しい Grok 会話",
+            "createTime": "2026-04-21T02:00:00Z",
+            "modifyTime": "2026-04-21T02:05:00Z",
+        }
+    )
+    (updated_export / "conversations.index.json").write_text(json.dumps(conversations_payload))
+    (updated_export / "responses" / "conv-1.responses.json").write_text(
+        (GROK_HISTORY_PATH / "responses" / "conv-1.responses.json").read_text()
+    )
+    (updated_export / "responses" / "conv-2.responses.json").write_text(
+        json.dumps(
+            {
+                "responses": [
+                    {"sender": "user", "message": "新幹線の混雑は？"},
+                    {"sender": "assistant", "message": "朝は余裕を見た方が安全です。"},
+                ]
+            }
+        )
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--grok-history",
+                str(updated_export),
+                "--state-db",
+                str(database_path),
+                "--archive-root",
+                str(archive_root),
+                "--now",
+                "2026-04-20T10:20:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert [item["id"] for item in calls[-1]["raw_items"] if item["source"] == "grok_history"] == ["conv-2"]
+
+    with sqlite3.connect(database_path) as connection:
+        cursor = connection.execute(
+            "SELECT connector_id, cursor FROM connector_cursors WHERE connector_id = 'grok_history'"
+        ).fetchone()
+
+    assert cursor == ("grok_history", "conv-2")
+
+
+def test_morning_digest_keeps_updated_chatgpt_conversation_with_same_id(monkeypatch, tmp_path: Path) -> None:
+    calls = _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Canonical summary\n")
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    archive_root = tmp_path / "Pulse"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--chatgpt-history",
+                str(CHATGPT_HISTORY_PATH),
+                "--state-db",
+                str(database_path),
+                "--archive-root",
+                str(archive_root),
+                "--now",
+                "2026-04-20T10:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    updated_export = tmp_path / "chatgpt-updated-same-id"
+    conversations_dir = updated_export / "extracted" / "conversations"
+    conversations_dir.mkdir(parents=True)
+    (updated_export / "manifest.json").write_text((CHATGPT_HISTORY_PATH / "manifest.json").read_text())
+    (conversations_dir / "user.json").write_text(
+        (CHATGPT_HISTORY_PATH / "extracted" / "conversations" / "user.json").read_text()
+    )
+    conversations = json.loads((CHATGPT_HISTORY_PATH / "extracted" / "conversations" / "conversations.json").read_text())
+    conversations[0]["update_time"] = 1713600800.0
+    conversations[0]["mapping"]["node-assistant"]["message"]["content"]["parts"] = ["更新された返答です。"]
+    (conversations_dir / "conversations.json").write_text(json.dumps(conversations))
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--chatgpt-history",
+                str(updated_export),
+                "--state-db",
+                str(database_path),
+                "--archive-root",
+                str(archive_root),
+                "--now",
+                "2026-04-20T10:15:00Z",
+            ]
+        )
+        == 0
+    )
+
+    same_id_items = [item for item in calls[-1]["raw_items"] if item["source"] == "chatgpt_history"]
+    assert [item["id"] for item in same_id_items] == ["chatcmpl-conv-1"]
+    assert same_id_items[0]["body"] == "user: 来月の京都旅行、2泊3日ならどこを回るべき？\n\nassistant: 更新された返答です。"
 
 
 def test_failed_digest_does_not_advance_x_signal_cursor(monkeypatch, tmp_path: Path) -> None:
@@ -2574,3 +2817,78 @@ def test_morning_digest_clears_last_error_after_successful_empty_poll(monkeypatc
         ).fetchone()
 
     assert row == ("2026-04-20T09:40:00Z", "[]", "[]", '{"last_error": null}')
+
+
+def test_state_summary_renders_feedback_and_approval_action_overview(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "reports" / "state-summary.md"
+    initialize_database(database_path)
+    upsert_connector_cursor(
+        database_path,
+        connector_id="chatgpt_history",
+        cursor="chatcmpl-conv-2",
+        last_poll_at="2026-04-20T10:15:00Z",
+        last_success_at="2026-04-20T10:15:00Z",
+    )
+    upsert_connector_cursor(
+        database_path,
+        connector_id="grok_history",
+        cursor="conv-2",
+        last_poll_at="2026-04-20T10:20:00Z",
+        last_success_at="2026-04-20T10:20:00Z",
+        last_error="tab missing",
+    )
+    action_id = record_approval_action(
+        database_path,
+        run_id="run-approval",
+        action_kind="shopping.replenishment",
+        subject='["notes", "beans"]',
+        approval_boundary_reached=True,
+        user_decision="approved",
+        execution_result="executed",
+        execution_details='{"provider": "amazon", "order_id": "ORDER-123"}',
+        recorded_at="2026-04-20T12:15:00Z",
+    )
+    record_feedback(
+        database_path,
+        run_id="run-approval",
+        category="action_execution",
+        subject="shopping.replenishment",
+        signal="executed",
+        value="1",
+        recorded_at="2026-04-20T12:15:00Z",
+    )
+    record_feedback(
+        database_path,
+        run_id="run-approval",
+        category="action_execution",
+        subject="shopping.replenishment",
+        signal="retryable_failure",
+        value="1",
+        recorded_at="2026-04-20T12:20:00Z",
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "state-summary",
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+            ]
+        )
+        == 0
+    )
+
+    content = output_path.read_text()
+    assert "# Hermes Pulse state summary" in content
+    assert "chatgpt_history" in content
+    assert "chatcmpl-conv-2" in content
+    assert "grok_history" in content
+    assert "tab missing" in content
+    assert action_id in content
+    assert "shopping.replenishment" in content
+    assert "ORDER-123" in content
+    assert "action_execution / shopping.replenishment / executed: 1" in content
+    assert "action_execution / shopping.replenishment / retryable_failure: 1" in content

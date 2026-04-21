@@ -448,3 +448,75 @@ def get_approval_action_record(path: str | Path, *, action_id: str) -> dict[str,
         "user_decision": row[3],
         "execution_result": row[4],
     }
+
+
+def list_connector_cursor_records(path: str | Path) -> list[dict[str, str | None]]:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(
+            "SELECT connector_id, cursor, last_poll_at, last_success_at, last_error FROM connector_cursors ORDER BY connector_id"
+        ).fetchall()
+    return [
+        {
+            "connector_id": row[0],
+            "cursor": row[1],
+            "last_poll_at": row[2],
+            "last_success_at": row[3],
+            "last_error": row[4],
+        }
+        for row in rows
+    ]
+
+
+def list_recent_approval_actions(path: str | Path, *, limit: int = 20) -> list[dict[str, str | int | None]]:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT action_id, run_id, action_kind, subject, approval_boundary_reached, user_decision,
+                   execution_result, execution_details, recorded_at
+            FROM approval_action_log
+            ORDER BY recorded_at DESC, action_id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [
+        {
+            "action_id": row[0],
+            "run_id": row[1],
+            "action_kind": row[2],
+            "subject": row[3],
+            "approval_boundary_reached": row[4],
+            "user_decision": row[5],
+            "execution_result": row[6],
+            "execution_details": row[7],
+            "recorded_at": row[8],
+        }
+        for row in rows
+    ]
+
+
+def summarize_feedback_signals(path: str | Path) -> list[dict[str, str]]:
+    database_path = Path(path)
+    initialize_database(database_path)
+    with sqlite3.connect(database_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT category, subject, signal, COUNT(*)
+            FROM feedback_log
+            GROUP BY category, subject, signal
+            ORDER BY category, subject, signal
+            """
+        ).fetchall()
+    return [
+        {
+            "category": row[0],
+            "subject": row[1],
+            "signal": row[2],
+            "count": str(row[3]),
+        }
+        for row in rows
+    ]

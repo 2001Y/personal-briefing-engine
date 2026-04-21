@@ -1,6 +1,7 @@
 import argparse
 import inspect
 import json
+import re
 import sqlite3
 from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta, timezone
@@ -24,11 +25,14 @@ from hermes_pulse.db import (
     get_approval_action_record,
     get_suppression,
     list_active_suppression_subjects,
+    list_connector_cursor_records,
+    list_recent_approval_actions,
     record_approval_action,
     record_delivery,
     record_feedback,
     record_suppression,
     record_trigger_run,
+    summarize_feedback_signals,
     update_approval_action,
     update_suppression_status,
     update_suppression_superseded_flag,
@@ -94,6 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
             "expire-suppression",
             "supersede-suppression",
             "refresh-grok-history",
+            "state-summary",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -164,6 +169,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("refresh-grok-history requires --output-dir")
         GrokBrowserExporter(cdp_port=args.cdp_port).export(args.output_dir, page_size=args.page_size)
         return 0
+    if args.command == "state-summary":
+        if args.state_db is None:
+            raise ValueError("state-summary requires --state-db")
+        markdown = _render_state_summary(args.state_db)
+        if args.output is not None:
+            LocalMarkdownDelivery().deliver(markdown, args.output)
+        else:
+            print(markdown, end="")
+        return 0
     if args.state_db is not None:
         profile = _profile_for_command(args.command)
         run_id = record_trigger_run(
@@ -190,6 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             occurred_at = _occurred_at_for_command(args.command, args)
             deliverable_items = items
             if args.state_db is not None:
+                items = _filter_items_already_seen_by_connector_cursor(args.state_db, items=items)
                 deliverable_items = _filter_suppressed_items(
                     args.state_db,
                     items=items,
@@ -438,10 +453,45 @@ def _collect_x_signals_with_error_capture(
     return items
 
 
-def _cursor_sort_key(raw_record_id: str) -> tuple[int, int | str]:
+def _cursor_sort_key(raw_record_id: str) -> tuple[int, str, int | str]:
     if raw_record_id.isdigit():
-        return (1, int(raw_record_id))
-    return (0, raw_record_id)
+        return (2, "", int(raw_record_id))
+    match = re.match(r"^(.*?)(\d+)$", raw_record_id)
+    if match is not None:
+        prefix, numeric_suffix = match.groups()
+        return (1, prefix, int(numeric_suffix))
+    return (0, raw_record_id, raw_record_id)
+
+
+def _filter_items_already_seen_by_connector_cursor(path: Path, *, items: list[CollectedItem]) -> list[CollectedItem]:
+    filtered: list[CollectedItem] = []
+    for item in items:
+        provenance = item.provenance
+        if provenance is None or provenance.raw_record_id is None:
+            filtered.append(item)
+            continue
+        existing = _get_connector_cursor_state(path, connector_id=item.source)
+        if existing is None or existing["cursor"] is None:
+            filtered.append(item)
+            continue
+        existing_cursor = existing["cursor"]
+        last_success_at = existing["last_success_at"]
+        item_updated_at = None if item.timestamps is None else item.timestamps.updated_at or item.timestamps.created_at
+        if item_updated_at is not None and last_success_at is not None:
+            if _timestamp_sort_key(item_updated_at) > _timestamp_sort_key(last_success_at):
+                filtered.append(item)
+                continue
+        if _cursor_sort_key(provenance.raw_record_id) > _cursor_sort_key(existing_cursor):
+            filtered.append(item)
+    return filtered
+
+
+def _timestamp_sort_key(value: str) -> float:
+    try:
+        return float(value)
+    except ValueError:
+        normalized = value.replace("Z", "+00:00")
+        return datetime.fromisoformat(normalized).timestamp()
 
 
 def _record_connector_cursors_from_items(
@@ -452,11 +502,16 @@ def _record_connector_cursors_from_items(
     x_signal_types: list[str],
     history_connectors: list[str],
 ) -> None:
+    history_connector_set = set(history_connectors)
     top_cursors: dict[str, str | None] = {
         _x_source_for_signal_type(signal_type): None for signal_type in x_signal_types
     }
+    success_markers: dict[str, str | None] = {
+        connector_id: occurred_at for connector_id in top_cursors
+    }
     for connector_id in history_connectors:
         top_cursors.setdefault(connector_id, None)
+        success_markers.setdefault(connector_id, None)
     for item in items:
         if item.source not in top_cursors:
             continue
@@ -466,14 +521,26 @@ def _record_connector_cursors_from_items(
         current_cursor = top_cursors[item.source]
         if current_cursor is None or _cursor_sort_key(raw_record_id) > _cursor_sort_key(current_cursor):
             top_cursors[item.source] = raw_record_id
+        if item.source in history_connector_set:
+            item_updated_at = None if item.timestamps is None else item.timestamps.updated_at or item.timestamps.created_at
+            if item_updated_at is None:
+                continue
+            current_marker = success_markers[item.source]
+            if current_marker is None or _timestamp_sort_key(item_updated_at) > _timestamp_sort_key(current_marker):
+                success_markers[item.source] = item_updated_at
 
     for connector_id, cursor in top_cursors.items():
+        existing = _get_connector_cursor_state(path, connector_id=connector_id)
         upsert_connector_cursor(
             path,
             connector_id=connector_id,
             cursor=cursor,
             last_poll_at=occurred_at,
-            last_success_at=occurred_at,
+            last_success_at=(
+                success_markers[connector_id]
+                if success_markers[connector_id] is not None
+                else None if existing is None else existing["last_success_at"]
+            ),
         )
 
 
@@ -595,6 +662,63 @@ def _get_source_registry_notes(path: Path, *, registry_id: str) -> str | None:
     if state is None:
         return None
     return state["notes"]
+
+
+def _render_state_summary(path: Path) -> str:
+    cursor_rows = list_connector_cursor_records(path)
+    action_rows = list_recent_approval_actions(path)
+    feedback_rows = summarize_feedback_signals(path)
+
+    lines = ["# Hermes Pulse state summary", ""]
+    lines.append("## Connector cursors")
+    if cursor_rows:
+        for row in cursor_rows:
+            lines.append(
+                "- {connector_id}: cursor={cursor}, last_success_at={last_success_at}, last_error={last_error}".format(
+                    connector_id=row["connector_id"],
+                    cursor=row["cursor"] or "-",
+                    last_success_at=row["last_success_at"] or "-",
+                    last_error=row["last_error"] or "-",
+                )
+            )
+    else:
+        lines.append("- none")
+
+    lines.extend(["", "## Approval actions"])
+    if action_rows:
+        for row in action_rows:
+            details_summary = "-"
+            execution_details = row["execution_details"]
+            if isinstance(execution_details, str) and execution_details:
+                try:
+                    parsed_details = json.loads(execution_details)
+                except json.JSONDecodeError:
+                    details_summary = execution_details
+                else:
+                    if isinstance(parsed_details, dict):
+                        parts = [f"{key}={value}" for key, value in sorted(parsed_details.items())]
+                        details_summary = ", ".join(parts) if parts else "-"
+            lines.append(
+                "- {action_id}: {action_kind} / {user_decision} / {execution_result} / details={details} / recorded_at={recorded_at}".format(
+                    action_id=row["action_id"],
+                    action_kind=row["action_kind"],
+                    user_decision=row["user_decision"],
+                    execution_result=row["execution_result"],
+                    details=details_summary,
+                    recorded_at=row["recorded_at"],
+                )
+            )
+    else:
+        lines.append("- none")
+
+    lines.extend(["", "## Feedback signal totals"])
+    if feedback_rows:
+        for row in feedback_rows:
+            lines.append(f"- {row['category']} / {row['subject']} / {row['signal']}: {row['count']}")
+    else:
+        lines.append("- none")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _build_source_registry_notes(existing_notes: str | None, *, last_error: str | None) -> dict[str, object] | None:
