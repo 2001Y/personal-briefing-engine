@@ -82,7 +82,6 @@ def build_parser() -> argparse.ArgumentParser:
             "feed-update",
             "location-arrival",
             "location-walk",
-            "location-dwell",
             "review-trigger-quality",
             "gap-window-mini-digest",
             "feed-update-deep-brief",
@@ -238,7 +237,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             markdown = _build_feed_update(args)
         elif args.command == "location-arrival":
             markdown = _build_location_arrival(args)
-        elif args.command in {"location-walk", "location-dwell"}:
+        elif args.command == "location-walk":
             location_errors: dict[str, str] = {}
             location_successful: set[str] = set()
             items = _collect_location_context_items(
@@ -387,7 +386,6 @@ def _profile_for_command(command: str | None):
         "feed-update": "feed.update.default",
         "location-arrival": "location.arrival.default",
         "location-walk": "location.walk.default",
-        "location-dwell": "location.dwell.default",
         "review-trigger-quality": "review.trigger_quality.default",
         "gap-window-mini-digest": "calendar.gap_window.default",
         "feed-update-deep-brief": "feed.update.expert_depth",
@@ -870,9 +868,6 @@ def _build_location_arrival(args: argparse.Namespace) -> str | None:
 def _build_location_walk(args: argparse.Namespace) -> str | None:
     items = _collect_location_context_items(location_fixture=getattr(args, "location_fixture", None))
     return render_location_walk_nudge(items)
-
-
-_build_location_dwell = _build_location_walk
 
 
 def _collect_location_context_items(

@@ -2,7 +2,7 @@
 
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 >
-> **Historical note (2026-04-21):** this plan originally used the names `location.dwell` / `location-dwell`. The canonical trigger is now `location.walk` / `location-walk`; old names remain only as compatibility aliases.
+> **Historical note (2026-04-21):** this plan originally used the names `location.dwell` / `location-dwell`. The canonical trigger is now `location.walk` / `location-walk`, and the old names have been removed.
 
 **Goal:** Make Hermes Pulse Slack delivery actually usable in production, enrich feed items with article body text when reality supports it, and add a high-frequency location-driven alert slice that fits Hermes Pulse’s event-first design instead of degenerating into a noisy tracker.
 
@@ -26,7 +26,7 @@
    - Keep extraction small and deterministic rather than adding a heavy scraping stack.
 
 3. **High-frequency location alerts should be one narrow trigger family, not many ad-hoc jobs.**
-   - Add `location.walk.default` as the canonical trigger (`location.dwell.default` kept only as a compatibility alias).
+   - Add `location.walk.default` as the canonical trigger.
    - Let one trigger emit a `nudge` with different reasons in metadata: `walking_nearby`, `stopped_moving`, `meal_window`, `snack_window`.
    - This matches the product docs: event-driven proactivity, minimal layers, right-moment delivery, and trigger-specific suppression.
 
@@ -224,7 +224,7 @@ git commit -m "feat: enrich feed items with fetched article bodies"
 - Modify: `src/hermes_pulse/cli.py`
 - Modify: `src/hermes_pulse/rendering.py`
 - Modify: `src/hermes_pulse/connectors/location_context.py`
-- Create: `tests/test_location_walk.py` (historically `tests/test_location_dwell.py`)
+- Create: `tests/test_location_walk.py`
 - Modify: `tests/test_collection.py`
 - Create: `fixtures/location/location_walk_meal.json`
 - Create: `fixtures/location/location_walk_snack.json`
@@ -234,8 +234,8 @@ git commit -m "feat: enrich feed items with fetched article bodies"
 
 Add tests that assert:
 1. `location.walk.default` resolves from the registry with output mode `nudge`
-2. collection preset `location_walk` invokes only `location_context` (`location_dwell` kept only as compatibility alias)
-3. CLI command `location-walk` writes a nudge markdown file from a location fixture (`location-dwell` kept as alias)
+2. collection preset `location_walk` invokes only `location_context`
+3. CLI command `location-walk` writes a nudge markdown file from a location fixture
 4. location-walk output includes:
    - place name
    - reason-specific message
@@ -255,15 +255,15 @@ Expected: FAIL because the trigger/command/rendering do not exist yet.
 
 Implementation shape:
 - add `location.walk.default` to `trigger_registry.py`
-- add `location_walk` preset in `collection.py` (keep `location_dwell` alias only for compatibility)
+- add `location_walk` preset in `collection.py`
 - define the fixture schema emitted by `LocationContextConnector` with fields:
   - `detected_reason`
   - `place_category`
   - `local_time`
   - `dwell_minutes`
-  - `nearby_context`
-- add renderer `render_location_walk_nudge(items)` in `rendering.py` (keep `render_location_dwell_nudge` alias)
-- add CLI command `location-walk` in `cli.py` (keep `location-dwell` alias)
+- add `location_walk` preset in `collection.py`
+- add renderer `render_location_walk_nudge(items)` in `rendering.py`
+- add CLI command `location-walk` in `cli.py`
 
 Behavior rules:
 - `meal_window` when local time is around lunch/dinner and the place/context suggests eating is plausible
@@ -386,7 +386,7 @@ Expected: PASS.
 - [ ] Feed items can carry fetched article `body`
 - [ ] Feed body fetch failures do not break collection
 - [ ] `location.walk.default` exists and is test-covered
-- [ ] `location-walk` CLI works with fixtures (`location-dwell` acceptable only as alias)
+- [ ] `location-walk` CLI works with fixtures
 - [ ] Docs reflect what is actually implemented
 - [ ] Full `pytest -q` passes
 

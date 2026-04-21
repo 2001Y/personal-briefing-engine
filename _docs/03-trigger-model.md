@@ -114,7 +114,7 @@ Current implementation note:
 ### Scheduled digests do not replace event triggers
 Morning/evening provide broad coherence.
 Event triggers provide timeliness.
-For high-frequency polling (for example every 5 minutes), prefer one narrow trigger like `location.walk` over many special-case schedulers so suppression, feedback, and cooldown stay inside the trigger model. `location-dwell` may remain as a compatibility alias while callers migrate.
+For high-frequency polling (for example every 5 minutes), prefer one narrow trigger like `location.walk` over many special-case schedulers so suppression, feedback, and cooldown stay inside the trigger model.
 
 ### Feed triggers do not imply news-only behavior
 The same mechanism should support:

@@ -8,7 +8,7 @@ from typing import Sequence
 
 from hermes_pulse.summarization.codex_cli import DEFAULT_CODEX_MODEL, DEFAULT_SUMMARY_FORMAT
 
-DEFAULT_LAUNCHD_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+DEFAULT_LAUNCHD_PATH = "/Users/akitani/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 DEFAULT_WRAPPER_FILENAME = "run-hermes-pulse-direct-delivery.sh"
 DEFAULT_SHARED_ENV_PATH = Path("~/.config/env/shared.env").expanduser()
 DEFAULT_XURL_APP_NAME = "default"
@@ -79,9 +79,6 @@ class LocationWalkWrapperSpec:
     source_registry: Path | None = None
     working_directory: Path | None = None
     shared_env_path: Path = DEFAULT_SHARED_ENV_PATH
-
-
-LocationDwellWrapperSpec = LocationWalkWrapperSpec
 
 
 @dataclass(frozen=True)
@@ -267,11 +264,6 @@ def render_location_walk_wrapper(spec: LocationWalkWrapperSpec) -> str:
             "",
         ]
     )
-
-
-build_location_dwell_program_arguments = build_location_walk_program_arguments
-build_location_dwell_slack_post_arguments = build_location_walk_slack_post_arguments
-render_location_dwell_wrapper = render_location_walk_wrapper
 
 
 def render_launchd_plist(spec: LaunchdPlistSpec) -> str:

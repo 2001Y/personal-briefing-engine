@@ -160,7 +160,7 @@ Implemented today:
 - `shopping-replenishment` event-trigger CLI
 - `feed-update` event-trigger CLI
 - `location-arrival` event-trigger CLI
-- `location-walk` event-trigger CLI (with `location-dwell` kept as a compatibility alias)
+- `location-walk` event-trigger CLI
 - `review-trigger-quality` audit CLI
 - `gap-window-mini-digest` event-trigger CLI
 - `feed-update-deep-brief` event-trigger CLI
@@ -181,7 +181,7 @@ Current scope and gaps:
 - legacy local DB/schema compatibility is not preserved intentionally; the runtime now assumes the current schema
 - canonical CLI flows today are `morning-digest`, `evening-digest`, `leave-now-warning`, `mail-operational`, `shopping-replenishment`, `feed-update`, `feed-update-deep-brief`, `feed-update-source-audit`, `location-arrival`, `location-walk`, `gap-window-mini-digest`, and `review-trigger-quality`
 - `calendar.leave_now`, `calendar.gap_window`, `mail.operational`, `shopping.replenishment`, `feed.update`, `feed.update.expert_depth`, `feed.update.source_audit`, `location.arrival`, `location.walk`, and `review.trigger_quality` are implemented minimally; deeper trigger families still remain future work
-- the intended high-frequency location shape is a narrow `location.walk` poll (for example every 5 minutes) against a local-store source such as Dawarich, with cooldown/suppression used to avoid spam; `location-dwell` remains as a CLI compatibility alias
+- the intended high-frequency location shape is a narrow `location.walk` poll (for example every 5 minutes) against a local-store source such as Dawarich, with cooldown/suppression used to avoid spam
 - docs still describe broader target architecture beyond the currently implemented runtime
 
 Verification snapshot:

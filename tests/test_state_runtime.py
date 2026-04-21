@@ -1056,11 +1056,11 @@ def test_location_walk_delivers_again_after_trigger_cooldown_expires(tmp_path: P
     assert suppression_rows == [("2026-04-20T13:00:00Z",), ("2026-04-20T14:01:00Z",)]
 
 
-def test_location_dwell_cli_alias_records_canonical_location_walk_family(tmp_path: Path) -> None:
+def test_location_dwell_cli_alias_is_rejected_even_with_state_db(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "nudges" / "location-dwell-alias.md"
 
-    assert (
+    with pytest.raises(SystemExit):
         hermes_pulse.cli.main(
             [
                 "location-dwell",
@@ -1076,20 +1076,12 @@ def test_location_dwell_cli_alias_records_canonical_location_walk_family(tmp_pat
                 "2026-04-20T12:00:00Z",
             ]
         )
-        == 0
-    )
 
-    with sqlite3.connect(database_path) as connection:
-        trigger_row = connection.execute(
-            "SELECT event_type, profile_id FROM trigger_runs ORDER BY occurred_at DESC LIMIT 1"
-        ).fetchone()
-        suppression_row = connection.execute(
-            "SELECT trigger_family FROM suppression_history LIMIT 1"
-        ).fetchone()
-
-    assert output_path.exists()
-    assert trigger_row == ("location.walk", "location.walk.default")
-    assert suppression_row == ("location.walk",)
+    assert not output_path.exists()
+    if database_path.exists():
+        with sqlite3.connect(database_path) as connection:
+            trigger_rows = connection.execute("SELECT COUNT(*) FROM trigger_runs").fetchone()
+        assert trigger_rows == (0,)
 
 
 def test_record_suppression_history_preserves_zero_minute_cooldown(tmp_path: Path) -> None:

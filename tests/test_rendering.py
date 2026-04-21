@@ -1,9 +1,5 @@
 from hermes_pulse.models import CitationLink, CollectedItem, IntentSignals, Provenance
-from hermes_pulse.rendering import (
-    render_location_dwell_nudge,
-    render_location_walk_nudge,
-    render_morning_digest,
-)
+from hermes_pulse.rendering import render_location_walk_nudge, render_morning_digest
 from hermes_pulse.synthesis import synthesize_candidates
 
 
@@ -169,18 +165,6 @@ def test_render_location_walk_nudge_defaults_stationary_items_without_detected_r
     assert "Dwell: 21 min" in markdown
     assert "Walking:" not in markdown
     assert "You have paused here long enough to surface local context." in markdown
-
-
-def test_render_location_dwell_nudge_alias_matches_location_walk_nudge() -> None:
-    item = CollectedItem(
-        id="location_context:walking",
-        source="location_context",
-        source_kind="place",
-        title="Walking",
-        metadata={"walking_minutes": 6, "detected_reason": "future_reason"},
-    )
-
-    assert render_location_dwell_nudge([item]) == render_location_walk_nudge([item])
 
 
 def test_render_location_walk_nudge_normalizes_unknown_reason_by_motion_mode() -> None:

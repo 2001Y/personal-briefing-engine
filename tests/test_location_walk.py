@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 import hermes_pulse.cli
 from hermes_pulse.trigger_registry import get_trigger_profile
 
@@ -21,12 +23,9 @@ def test_trigger_registry_exposes_location_walk_profile() -> None:
     assert profile.collection_preset == "location_walk"
 
 
-def test_trigger_registry_keeps_location_dwell_as_compatibility_alias() -> None:
-    profile = get_trigger_profile("location.dwell.default")
-
-    assert profile.id == "location.walk.default"
-    assert profile.event_type == "location.walk"
-    assert profile.collection_preset == "location_walk"
+def test_trigger_registry_rejects_removed_location_dwell_profile_alias() -> None:
+    with pytest.raises(KeyError):
+        get_trigger_profile("location.dwell.default")
 
 
 def test_location_walk_writes_meal_window_nudge_while_walking(tmp_path: Path) -> None:
@@ -129,10 +128,10 @@ def test_location_walk_still_writes_stationary_nudge_for_stationary_fixture(tmp_
     assert "Tokyo Station" in content
 
 
-def test_location_dwell_cli_alias_still_works(tmp_path: Path) -> None:
+def test_location_dwell_cli_alias_is_rejected(tmp_path: Path) -> None:
     output_path = tmp_path / "nudges" / "location-dwell-alias.md"
 
-    assert (
+    with pytest.raises(SystemExit):
         hermes_pulse.cli.main(
             [
                 "location-dwell",
@@ -144,9 +143,5 @@ def test_location_dwell_cli_alias_still_works(tmp_path: Path) -> None:
                 str(output_path),
             ]
         )
-        == 0
-    )
 
-    content = output_path.read_text()
-    assert "Walking: 11 min" in content
-    assert "Tokyo Station" in content
+    assert not output_path.exists()

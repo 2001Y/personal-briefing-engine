@@ -6,14 +6,10 @@ from hermes_pulse.launchd import (
     DirectDeliveryWrapperSpec,
     GeneratedLaunchdArtifacts,
     LaunchdPlistSpec,
-    LocationDwellWrapperSpec,
     LocationWalkWrapperSpec,
-    build_location_dwell_program_arguments,
-    build_location_dwell_slack_post_arguments,
     generate_launchd_artifacts,
     render_direct_delivery_wrapper,
     render_launchd_plist,
-    render_location_dwell_wrapper,
     render_location_walk_wrapper,
 )
 
@@ -169,35 +165,6 @@ def test_render_location_walk_wrapper_runs_cli_then_posts_generated_markdown() -
         "--thread-ts",
         "1712345.6789",
     ]
-
-
-def test_location_dwell_launchd_alias_exports_location_walk_cli() -> None:
-    output_path = Path("/Users/akitani/.hermes/tmp/location-dwell.md")
-    state_db = Path("/Users/akitani/.hermes/state/hermes-pulse.db")
-    source_registry = REPO_ROOT / "fixtures/source_registry/sample_sources.yaml"
-    spec = LocationDwellWrapperSpec(
-        python_executable=Path("/opt/homebrew/bin/python3"),
-        repo_root=REPO_ROOT,
-        channel="D123456",
-        source_registry=source_registry,
-        state_db=state_db,
-        output_path=output_path,
-    )
-
-    wrapper = render_location_dwell_wrapper(spec)
-    cli_args = build_location_dwell_program_arguments(spec)
-    slack_args = build_location_dwell_slack_post_arguments(spec)
-
-    assert cli_args[3] == "location-walk"
-    assert cli_args[-1] == str(output_path)
-    assert slack_args[0:5] == [
-        "/opt/homebrew/bin/python3",
-        "-m",
-        "hermes_pulse.slack_direct",
-        "--input-file",
-        str(output_path),
-    ]
-    assert " -m hermes_pulse.cli location-walk " in wrapper
 
 
 def test_generate_launchd_artifacts_writes_wrapper_and_plist_to_output_directory(tmp_path: Path) -> None:

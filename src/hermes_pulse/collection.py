@@ -34,7 +34,6 @@ COLLECTION_PRESETS = {
     "known_source_deep_dive": ["feed_registry", "known_source_search"],
     "location_arrival": ["location_context"],
     "location_walk": ["location_context"],
-    "location_dwell": ["location_context"],
     "calendar_gap_window": ["google_calendar"],
     "trigger_quality_audit": ["audit_context"],
 }

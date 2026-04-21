@@ -94,15 +94,6 @@ TRIGGER_REGISTRY = {
         action_ceiling=1,
         cooldown_minutes=60,
     ),
-    "location.dwell.default": TriggerProfile(
-        id="location.walk.default",
-        family="event",
-        event_type="location.walk",
-        collection_preset="location_walk",
-        output_mode="nudge",
-        action_ceiling=1,
-        cooldown_minutes=60,
-    ),
     "calendar.gap_window.default": TriggerProfile(
         id="calendar.gap_window.default",
         family="event",

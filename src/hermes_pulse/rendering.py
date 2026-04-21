@@ -410,11 +410,6 @@ def _render_location_walk_message(reason: object, *, walking: bool = False) -> s
     }.get(reason, "You are moving at a walking pace, so nearby options can stay lightweight.")
 
 
-render_location_dwell_nudge = render_location_walk_nudge
-_render_location_dwell_reason = _render_location_walk_reason
-_render_location_dwell_message = _render_location_walk_message
-
-
 def _strip_html(text: str) -> str:
     text_without_tags = HTML_TAG_RE.sub(" ", text)
     plain_text = unescape(text_without_tags)
