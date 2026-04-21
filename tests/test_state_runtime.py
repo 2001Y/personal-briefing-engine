@@ -942,6 +942,147 @@ def test_location_dwell_records_location_context_poll_when_live_runner_returns_n
     assert row == ("location_context", None, "2026-04-20T12:30:00Z", "2026-04-20T12:30:00Z", None)
 
 
+def test_location_dwell_skips_suppressed_items_within_trigger_cooldown(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    first_output_path = tmp_path / "nudges" / "location-dwell-first.md"
+    second_output_path = tmp_path / "nudges" / "location-dwell-second.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(ROOT / "fixtures/location/location_dwell_meal.json"),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(first_output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(ROOT / "fixtures/location/location_dwell_meal.json"),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(second_output_path),
+                "--now",
+                "2026-04-20T12:30:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert first_output_path.exists()
+    assert not second_output_path.exists()
+    with sqlite3.connect(database_path) as connection:
+        suppression_rows = connection.execute(
+            "SELECT trigger_family, reason, cooldown_expires_at FROM suppression_history ORDER BY cooldown_expires_at"
+        ).fetchall()
+        cursor_row = connection.execute(
+            "SELECT connector_id, last_poll_at, last_success_at FROM connector_cursors WHERE connector_id = 'location_context'"
+        ).fetchone()
+
+    assert suppression_rows == [
+        ("location.dwell", "already_delivered_in_same_trigger_family", "2026-04-20T13:00:00Z")
+    ]
+    assert cursor_row == ("location_context", "2026-04-20T12:30:00Z", "2026-04-20T12:30:00Z")
+
+
+def test_location_dwell_delivers_again_after_trigger_cooldown_expires(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    first_output_path = tmp_path / "nudges" / "location-dwell-first.md"
+    second_output_path = tmp_path / "nudges" / "location-dwell-second.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(ROOT / "fixtures/location/location_dwell_meal.json"),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(first_output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(ROOT / "fixtures/location/location_dwell_meal.json"),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(second_output_path),
+                "--now",
+                "2026-04-20T13:01:00Z",
+            ]
+        )
+        == 0
+    )
+
+    assert first_output_path.exists()
+    assert second_output_path.exists()
+    with sqlite3.connect(database_path) as connection:
+        suppression_rows = connection.execute(
+            "SELECT cooldown_expires_at FROM suppression_history ORDER BY cooldown_expires_at"
+        ).fetchall()
+
+    assert suppression_rows == [("2026-04-20T13:00:00Z",), ("2026-04-20T14:01:00Z",)]
+
+
+def test_record_suppression_history_preserves_zero_minute_cooldown(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    run_id = "run-123"
+
+    hermes_pulse.cli._record_suppression_history(
+        database_path,
+        items=[
+            hermes_pulse.cli.CollectedItem(
+                id="location_context:tokyo-station",
+                source="location_context",
+                source_kind="place",
+                title="Tokyo Station",
+            )
+        ],
+        trigger_family="location.dwell",
+        occurred_at="2026-04-20T12:00:00Z",
+        run_id=run_id,
+        cooldown_minutes=0,
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT cooldown_expires_at FROM suppression_history WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+
+    assert row == ("2026-04-20T12:00:00Z",)
+
+
 def test_review_trigger_quality_skips_fresh_location_context(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "reviews" / "trigger-quality.md"

@@ -37,6 +37,7 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
     assert 'xurl auth apps add default --client-id "$X_CLIENT_ID" --client-secret "$X_CLIENT_SECRET"' in wrapper
     assert 'xurl auth apps update default --client-id "$X_CLIENT_ID" --client-secret "$X_CLIENT_SECRET"' in wrapper
     assert 'xurl auth default default' in wrapper
+    assert 'xurl auth default default "$X_OAUTH2_USERNAME"' in wrapper
 
     exec_line = next(line for line in wrapper.splitlines() if line.startswith("exec "))
     assert shlex.split(exec_line.removeprefix("exec ")) == [

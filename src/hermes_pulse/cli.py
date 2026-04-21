@@ -167,7 +167,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     pending_connector_cursor_update: tuple[list[CollectedItem], list[str], str] | None = None
     pending_local_connector_health_update: tuple[dict[str, str], set[str], list[CollectedItem], str] | None = None
     pending_source_registry_state_update: tuple[list[SourceRegistryEntry], list[CollectedItem], str, dict[str, str], set[str]] | None = None
-    pending_suppression_update: tuple[list[CollectedItem], str, str, str] | None = None
+    pending_suppression_update: tuple[list[CollectedItem], str, str, str, int | None] | None = None
     pending_feedback_update: tuple[list[CollectedItem], str, str] | None = None
     pending_approval_action_update: tuple[list[CollectedItem], str, str] | None = None
     try:
@@ -197,7 +197,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                     successful_sources,
                 )
                 if run_id is not None:
-                    pending_suppression_update = (deliverable_items, profile.event_type, occurred_at, run_id)
+                    pending_suppression_update = (
+                        deliverable_items,
+                        profile.event_type,
+                        occurred_at,
+                        run_id,
+                        None,
+                    )
             archive_root = args.archive_root or Path.home() / "Pulse"
             archive_directory = write_morning_digest_archive(
                 items=deliverable_items,
@@ -226,9 +232,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                 error_handler=lambda connector_id, message: location_errors.__setitem__(connector_id, message),
                 success_handler=lambda connector_id: location_successful.add(connector_id),
             )
-            markdown = render_location_dwell_nudge(items)
+            deliverable_items = items
             if args.state_db is not None:
+                deliverable_items = _filter_suppressed_items(
+                    args.state_db,
+                    items=items,
+                    trigger_family=profile.event_type,
+                    occurred_at=occurred_at,
+                )
                 pending_local_connector_health_update = (location_errors, location_successful, items, occurred_at)
+                if run_id is not None:
+                    pending_suppression_update = (
+                        deliverable_items,
+                        profile.event_type,
+                        occurred_at,
+                        run_id,
+                        profile.cooldown_minutes,
+                    )
+            markdown = render_location_dwell_nudge(deliverable_items)
         elif args.command == "review-trigger-quality":
             items = _build_event_trigger_items("review.trigger_quality.default", args)
             markdown = render_trigger_quality_review(items)
@@ -249,13 +270,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.state_db is not None and run_id is not None:
                 record_delivery(args.state_db, run_id=run_id, destination=str(delivered_path), status="success")
                 if pending_suppression_update is not None:
-                    items, trigger_family, occurred_at, suppression_run_id = pending_suppression_update
+                    items, trigger_family, occurred_at, suppression_run_id, cooldown_minutes = pending_suppression_update
                     _record_suppression_history(
                         args.state_db,
                         items=items,
                         trigger_family=trigger_family,
                         occurred_at=occurred_at,
                         run_id=suppression_run_id,
+                        cooldown_minutes=cooldown_minutes,
                     )
 
         if args.state_db is not None and pending_source_registry_state_update is not None:
@@ -579,10 +601,19 @@ def _filter_suppressed_items(path: Path, *, items: list[CollectedItem], trigger_
     return [item for item in items if json.dumps([item.source, item.id]) not in suppressed_subjects]
 
 
-def _record_suppression_history(path: Path, *, items: list[CollectedItem], trigger_family: str, occurred_at: str, run_id: str) -> None:
-    cooldown_expires_at = (
-        _parse_timestamp(occurred_at) + timedelta(days=1)
-    ).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+def _record_suppression_history(
+    path: Path,
+    *,
+    items: list[CollectedItem],
+    trigger_family: str,
+    occurred_at: str,
+    run_id: str,
+    cooldown_minutes: int | None = None,
+) -> None:
+    expires_at = _parse_timestamp(occurred_at) + timedelta(
+        minutes=1440 if cooldown_minutes is None else cooldown_minutes
+    )
+    cooldown_expires_at = expires_at.replace(microsecond=0).isoformat().replace("+00:00", "Z")
     for item in items:
         record_suppression(
             path,
