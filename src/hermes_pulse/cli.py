@@ -178,8 +178,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.input_dir is None or args.output_dir is None:
             raise ValueError("refresh-chatgpt-history requires --input-dir and --output-dir")
         preparer = ChatGPTExportPreparer()
-        latest_export = preparer.find_latest_export(args.input_dir)
-        preparer.prepare(latest_export, args.output_dir)
+        preparer.refresh_latest_export(args.input_dir, args.output_dir)
         return 0
     if args.command == "prepare-chatgpt-history":
         if args.input_file is None or args.output_dir is None:

@@ -119,12 +119,12 @@ def test_refresh_chatgpt_history_command_uses_latest_zip(monkeypatch, tmp_path: 
             calls.append({"event": "find", "input_dir": input_dir})
             return input_dir / "OpenAI-export-latest.zip"
 
-        def prepare(self, input_path: str | Path, output_dir: str | Path) -> dict[str, object]:
-            input_path = Path(input_path)
+        def refresh_latest_export(self, input_dir: str | Path, output_dir: str | Path) -> dict[str, object]:
+            input_dir = Path(input_dir)
             output_dir = Path(output_dir)
             output_dir.mkdir(parents=True, exist_ok=True)
             (output_dir / "manifest.json").write_text("{}")
-            calls.append({"event": "prepare", "input_path": input_path, "output_dir": output_dir})
+            calls.append({"event": "refresh", "input_dir": input_dir, "output_dir": output_dir})
             return {"conversation_count": 1}
 
     monkeypatch.setattr(hermes_pulse.cli, "ChatGPTExportPreparer", lambda: FakePreparer())
@@ -146,6 +146,49 @@ def test_refresh_chatgpt_history_command_uses_latest_zip(monkeypatch, tmp_path: 
     )
 
     assert calls == [
-        {"event": "find", "input_dir": input_dir},
-        {"event": "prepare", "input_path": input_dir / "OpenAI-export-latest.zip", "output_dir": output_dir},
+        {"event": "refresh", "input_dir": input_dir, "output_dir": output_dir},
     ]
+
+
+def test_refresh_latest_export_preserves_existing_nonempty_history_when_new_export_is_empty(tmp_path: Path) -> None:
+    downloads = tmp_path / "downloads"
+    downloads.mkdir()
+    output_dir = tmp_path / "prepared"
+    existing_dir = output_dir / "extracted" / "conversations"
+    existing_dir.mkdir(parents=True)
+    existing_conversations = [
+        {
+            "id": "chatcmpl-conv-existing",
+            "title": "既存の会話",
+            "create_time": 1713600000.0,
+            "update_time": 1713600300.0,
+            "mapping": {},
+        }
+    ]
+    (existing_dir / "conversations.json").write_text(json.dumps(existing_conversations))
+    (existing_dir / "user.json").write_text(json.dumps({"email": "existing@example.com"}))
+    (output_dir / "manifest.json").write_text(
+        json.dumps({"provider": "chatgpt", "conversation_count": 1, "account": "existing@example.com"})
+    )
+
+    latest_zip = downloads / "OpenAI-export-empty.zip"
+    source_dir = tmp_path / "source-empty"
+    inner_dir = source_dir / "inner"
+    inner_dir.mkdir(parents=True)
+    (inner_dir / "conversations.json").write_text("[]")
+    (inner_dir / "user.json").write_text(json.dumps({"email": "empty@example.com"}))
+    inner_zip = source_dir / "Conversations.zip"
+    with zipfile.ZipFile(inner_zip, "w") as archive:
+        archive.write(inner_dir / "conversations.json", arcname="conversations.json")
+        archive.write(inner_dir / "user.json", arcname="user.json")
+    with zipfile.ZipFile(latest_zip, "w") as archive:
+        archive.write(inner_zip, arcname="User Online Activity/Conversations__sample-chatgpt-0001.zip")
+        archive.writestr("report.html", "<html></html>")
+
+    result = ChatGPTExportPreparer().refresh_latest_export(downloads, output_dir)
+
+    assert json.loads((output_dir / "extracted" / "conversations" / "conversations.json").read_text()) == existing_conversations
+    manifest = json.loads((output_dir / "manifest.json").read_text())
+    assert manifest["conversation_count"] == 1
+    assert result["import_status"] == "skipped_empty_export"
+    assert result["latest_export_conversation_count"] == 0

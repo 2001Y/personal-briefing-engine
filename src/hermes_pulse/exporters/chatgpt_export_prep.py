@@ -17,6 +17,31 @@ class ChatGPTExportPreparer:
             raise FileNotFoundError("No ChatGPT export zip found")
         return max(candidates, key=lambda path: (path.stat().st_mtime, path.name))
 
+    def refresh_latest_export(self, input_dir: str | Path, output_dir: str | Path) -> dict[str, Any]:
+        latest_export = self.find_latest_export(input_dir)
+        destination = Path(output_dir)
+        existing_count = _read_existing_conversation_count(destination)
+        with tempfile.TemporaryDirectory(prefix="chatgpt-refresh-") as temp_dir:
+            staged_output = Path(temp_dir) / "prepared"
+            prepared = self.prepare(latest_export, staged_output)
+            if prepared["conversation_count"] == 0 and existing_count > 0:
+                manifest_path = destination / "manifest.json"
+                existing_manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
+                existing_manifest["latest_export_conversation_count"] = 0
+                existing_manifest["latest_export_source_path"] = str(latest_export)
+                existing_manifest["import_status"] = "skipped_empty_export"
+                manifest_path.write_text(json.dumps(existing_manifest, ensure_ascii=False, indent=2))
+                return {
+                    **existing_manifest,
+                    "conversation_count": existing_count,
+                    "latest_export_conversation_count": 0,
+                    "source_path": str(latest_export),
+                }
+            destination.mkdir(parents=True, exist_ok=True)
+            shutil.rmtree(destination, ignore_errors=True)
+            shutil.copytree(staged_output, destination)
+            return prepared
+
     def prepare(self, input_path: str | Path, output_dir: str | Path) -> dict[str, Any]:
         source = Path(input_path)
         destination = Path(output_dir)
@@ -94,6 +119,15 @@ def _find_first_file(root: Path, filename: str) -> Path | None:
 def _looks_like_chatgpt_export_zip(path: Path) -> bool:
     name = path.name.lower()
     return "openai-export" in name or "chatgpt" in name or "conversations__" in name
+
+
+
+def _read_existing_conversation_count(output_dir: Path) -> int:
+    conversations_path = output_dir / "extracted" / "conversations" / "conversations.json"
+    if not conversations_path.exists():
+        return 0
+    payload = json.loads(conversations_path.read_text())
+    return len(payload) if isinstance(payload, list) else 0
 
 
 
