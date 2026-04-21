@@ -27,6 +27,7 @@ def test_broad_day_start_invokes_expected_connectors_only() -> None:
     x_signals = StubConnector("x_signals")
     google_calendar = StubConnector("google_calendar")
     gmail = StubConnector("gmail")
+    grok_history = StubConnector("grok_history")
     hermes_history = StubConnector("hermes_history")
     notes = StubConnector("notes")
     unrelated = StubConnector("unrelated")
@@ -40,18 +41,20 @@ def test_broad_day_start_invokes_expected_connectors_only() -> None:
             x_signals.id: x_signals,
             google_calendar.id: google_calendar,
             gmail.id: gmail,
+            grok_history.id: grok_history,
             hermes_history.id: hermes_history,
             notes.id: notes,
             unrelated.id: unrelated,
         },
     )
 
-    assert collected == ["feed_registry", "known_source_search", "x_signals", "google_calendar", "gmail", "hermes_history", "notes"]
+    assert collected == ["feed_registry", "known_source_search", "x_signals", "google_calendar", "gmail", "grok_history", "hermes_history", "notes"]
     assert feed.calls == 1
     assert known_source_search.calls == 1
     assert x_signals.calls == 1
     assert google_calendar.calls == 1
     assert gmail.calls == 1
+    assert grok_history.calls == 1
     assert hermes_history.calls == 1
     assert notes.calls == 1
     assert unrelated.calls == 0
@@ -94,6 +97,7 @@ def test_broad_day_end_invokes_expected_connectors_only() -> None:
     x_signals = StubConnector("x_signals")
     google_calendar = StubConnector("google_calendar")
     gmail = StubConnector("gmail")
+    grok_history = StubConnector("grok_history")
     hermes_history = StubConnector("hermes_history")
     notes = StubConnector("notes")
 
@@ -106,17 +110,19 @@ def test_broad_day_end_invokes_expected_connectors_only() -> None:
             x_signals.id: x_signals,
             google_calendar.id: google_calendar,
             gmail.id: gmail,
+            grok_history.id: grok_history,
             hermes_history.id: hermes_history,
             notes.id: notes,
         },
     )
 
-    assert collected == ["feed_registry", "known_source_search", "x_signals", "google_calendar", "gmail", "hermes_history", "notes"]
+    assert collected == ["feed_registry", "known_source_search", "x_signals", "google_calendar", "gmail", "grok_history", "hermes_history", "notes"]
     assert feed.calls == 1
     assert known_source_search.calls == 1
     assert x_signals.calls == 1
     assert google_calendar.calls == 1
     assert gmail.calls == 1
+    assert grok_history.calls == 1
     assert hermes_history.calls == 1
     assert notes.calls == 1
 

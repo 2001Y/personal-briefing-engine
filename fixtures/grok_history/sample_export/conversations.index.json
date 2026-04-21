@@ -1,0 +1,15 @@
+{
+  "summary": {
+    "provider": "grok",
+    "acquisition_mode": "browser_automation_experimental",
+    "count": 1
+  },
+  "conversations": [
+    {
+      "conversationId": "conv-1",
+      "title": "定期券の経路相談",
+      "createTime": "2026-04-21T01:06:51.004219Z",
+      "modifyTime": "2026-04-21T01:27:11.327Z"
+    }
+  ]
+}

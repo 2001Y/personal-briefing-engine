@@ -12,6 +12,7 @@ from hermes_pulse.connectors.audit_context import AuditContextConnector, load_au
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
 from hermes_pulse.connectors.gmail import GmailConnector
 from hermes_pulse.connectors.google_calendar import GoogleCalendarConnector
+from hermes_pulse.connectors.grok_history import GrokHistoryConnector
 from hermes_pulse.connectors.hermes_history import HermesHistoryConnector
 from hermes_pulse.connectors.known_source_search import KnownSourceSearchConnector
 from hermes_pulse.connectors.location_context import LocationContextConnector, load_location_context_fixture
@@ -99,6 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gmail-fixture", type=Path)
     parser.add_argument("--location-fixture", type=Path)
     parser.add_argument("--audit-fixture", type=Path)
+    parser.add_argument("--grok-history", type=Path)
     parser.add_argument("--hermes-history", type=Path)
     parser.add_argument("--notes", type=Path)
     parser.add_argument("--archive-root", type=Path)
@@ -755,6 +757,12 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
     notes_path = getattr(args, "notes", None)
     calendar_runner = _build_json_runner(calendar_fixture)
     gmail_runner = _build_json_runner(gmail_fixture)
+    audit_runner = _build_audit_runner(
+        audit_fixture=audit_fixture,
+        state_db=getattr(args, "state_db", None),
+        source_registry=source_registry,
+        occurred_at=occurred_at,
+    )
     occurred_at = (getattr(args, "now", None) or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
     trigger = TriggerEvent(
         id=f"event:{profile.id}",
@@ -836,6 +844,10 @@ def _build_digest_with_source_errors(command: str, args: argparse.Namespace) -> 
     if args.x_signals:
         signal_types = [value.strip() for value in args.x_signals.split(",") if value.strip()]
         connectors["x_signals"] = BoundConnector(lambda: XUrlConnector().collect(signal_types))
+    if getattr(args, "grok_history", None) is not None:
+        connectors["grok_history"] = BoundConnector(
+            lambda: GrokHistoryConnector().collect(args.grok_history)
+        )
     if args.hermes_history is not None:
         connectors["hermes_history"] = BoundConnector(
             lambda: HermesHistoryConnector().collect(args.hermes_history)

@@ -1,0 +1,17 @@
+{
+  "responses": [
+    {
+      "responseId": "r1",
+      "sender": "human",
+      "message": "目黒経由と渋谷経由のどちらが得？",
+      "createTime": "2026-04-21T01:06:51.440Z"
+    },
+    {
+      "responseId": "r2",
+      "sender": "ASSISTANT",
+      "message": "乗り換えなしなら目黒連絡が妥当です。",
+      "createTime": "2026-04-21T01:07:20.000Z"
+    }
+  ],
+  "inflightResponses": []
+}
