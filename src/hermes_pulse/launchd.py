@@ -22,6 +22,7 @@ class DirectDeliveryWrapperSpec:
     source_registry: Path | None = None
     feed_fixture: Path | None = None
     search_fixture: Path | None = None
+    grok_history: Path | None = None
     hermes_history: Path | None = None
     notes: Path | None = None
     x_signals: str | None = None
@@ -74,6 +75,8 @@ def build_direct_delivery_program_arguments(spec: DirectDeliveryWrapperSpec) -> 
         args.extend(["--feed-fixture", str(spec.feed_fixture)])
     if spec.search_fixture is not None:
         args.extend(["--search-fixture", str(spec.search_fixture)])
+    if spec.grok_history is not None:
+        args.extend(["--grok-history", str(spec.grok_history)])
     if spec.hermes_history is not None:
         args.extend(["--hermes-history", str(spec.hermes_history)])
     if spec.notes is not None:
