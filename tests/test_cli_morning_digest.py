@@ -343,6 +343,7 @@ def test_cli_parser_uses_hermes_pulse_program_name() -> None:
 
     assert parser.prog == "hermes-pulse"
     assert parser.parse_args(["morning-digest", "--x-signals", "bookmarks,likes"]).x_signals == "bookmarks,likes"
+    assert parser.parse_args(["refresh-grok-history", "--output-dir", str(tmp_path := ROOT)]).command == "refresh-grok-history"
     assert parser.parse_args(["morning-digest", "--chatgpt-history", str(CHATGPT_HISTORY_PATH)]).chatgpt_history == CHATGPT_HISTORY_PATH
     assert parser.parse_args(["morning-digest", "--grok-history", str(GROK_HISTORY_PATH)]).grok_history == GROK_HISTORY_PATH
 

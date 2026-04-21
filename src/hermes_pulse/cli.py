@@ -19,6 +19,7 @@ from hermes_pulse.connectors.known_source_search import KnownSourceSearchConnect
 from hermes_pulse.connectors.location_context import LocationContextConnector, load_location_context_fixture
 from hermes_pulse.connectors.notes import NotesConnector
 from hermes_pulse.connectors.x_url import XUrlConnector
+from hermes_pulse.exporters.grok_browser_export import GrokBrowserExporter
 from hermes_pulse.db import (
     get_approval_action_record,
     get_suppression,
@@ -92,6 +93,7 @@ def build_parser() -> argparse.ArgumentParser:
             "dismiss-suppression",
             "expire-suppression",
             "supersede-suppression",
+            "refresh-grok-history",
         ),
     )
     parser.add_argument("--source-registry", type=Path)
@@ -106,6 +108,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hermes-history", type=Path)
     parser.add_argument("--notes", type=Path)
     parser.add_argument("--archive-root", type=Path)
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--cdp-port", type=int, default=9223)
+    parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--state-db", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--action-id")
@@ -153,6 +158,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             suppression_id=args.suppression_id,
             command=args.command,
         )
+        return 0
+    if args.command == "refresh-grok-history":
+        if args.output_dir is None:
+            raise ValueError("refresh-grok-history requires --output-dir")
+        GrokBrowserExporter(cdp_port=args.cdp_port).export(args.output_dir, page_size=args.page_size)
         return 0
     if args.state_db is not None:
         profile = _profile_for_command(args.command)
