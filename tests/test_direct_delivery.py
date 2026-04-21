@@ -12,6 +12,7 @@ SOURCE_REGISTRY_PATH = ROOT / "fixtures/source_registry/sample_sources.yaml"
 FEED_FIXTURE_PATH = ROOT / "fixtures/feed_samples/official_feed.xml"
 SEARCH_FIXTURE_PATH = ROOT / "fixtures/search_samples/known_source_results.html"
 HERMES_HISTORY_PATH = ROOT / "fixtures/hermes_history/sample_session.json"
+CHATGPT_HISTORY_PATH = ROOT / "fixtures/chatgpt_history/sample_export"
 GROK_HISTORY_PATH = ROOT / "fixtures/grok_history/sample_export"
 NOTES_PATH = ROOT / "fixtures/notes/sample_notes.md"
 DEFAULT_CODEX_MODEL = "gpt-5.4"
@@ -283,6 +284,7 @@ def test_build_parser_accepts_codex_model_and_summary_format() -> None:
 
     assert args.codex_model == DEFAULT_CODEX_MODEL
     assert args.summary_format == DEFAULT_SUMMARY_FORMAT
+    assert direct_delivery.build_parser().parse_args(["--channel", "D123", "--chatgpt-history", str(CHATGPT_HISTORY_PATH)]).chatgpt_history == CHATGPT_HISTORY_PATH
     assert direct_delivery.build_parser().parse_args(["--channel", "D123", "--grok-history", str(GROK_HISTORY_PATH)]).grok_history == GROK_HISTORY_PATH
 
 

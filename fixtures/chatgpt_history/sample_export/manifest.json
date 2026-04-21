@@ -1,0 +1,7 @@
+{
+  "provider": "chatgpt",
+  "account": "mail+chatgpt@tam.nz",
+  "acquisition_mode": "official_export",
+  "purpose": "pulse-diff",
+  "import_status": "extracted"
+}

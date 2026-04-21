@@ -13,6 +13,7 @@ from hermes_pulse.summarization.base import SummaryArtifact
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REGISTRY_PATH = ROOT / "fixtures/source_registry/sample_sources.yaml"
 HERMES_HISTORY_PATH = ROOT / "fixtures/hermes_history/sample_session.json"
+CHATGPT_HISTORY_PATH = ROOT / "fixtures/chatgpt_history/sample_export"
 GROK_HISTORY_PATH = ROOT / "fixtures/grok_history/sample_export"
 NOTES_PATH = ROOT / "fixtures/notes/sample_notes.md"
 
@@ -342,6 +343,7 @@ def test_cli_parser_uses_hermes_pulse_program_name() -> None:
 
     assert parser.prog == "hermes-pulse"
     assert parser.parse_args(["morning-digest", "--x-signals", "bookmarks,likes"]).x_signals == "bookmarks,likes"
+    assert parser.parse_args(["morning-digest", "--chatgpt-history", str(CHATGPT_HISTORY_PATH)]).chatgpt_history == CHATGPT_HISTORY_PATH
     assert parser.parse_args(["morning-digest", "--grok-history", str(GROK_HISTORY_PATH)]).grok_history == GROK_HISTORY_PATH
 
 
@@ -365,6 +367,28 @@ def test_morning_digest_collects_configured_grok_history(monkeypatch, tmp_path: 
     )
 
     assert "定期券の経路相談" in output_path.read_text()
+
+
+def test_morning_digest_collects_configured_chatgpt_history(monkeypatch, tmp_path: Path) -> None:
+    _install_stub_codex_summarizer(monkeypatch)
+    output_path = tmp_path / "deliveries" / "morning-digest.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--chatgpt-history",
+                str(CHATGPT_HISTORY_PATH),
+                "--output",
+                str(output_path),
+            ]
+        )
+        == 0
+    )
+
+    assert "旅行計画の相談" in output_path.read_text()
 
 
 def test_morning_digest_collects_configured_x_signals(monkeypatch, tmp_path: Path) -> None:

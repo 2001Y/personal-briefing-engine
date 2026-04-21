@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from hermes_pulse.connectors.chatgpt_history import ChatGPTHistoryConnector
 from hermes_pulse.connectors.grok_history import GrokHistoryConnector
 from hermes_pulse.connectors.hermes_history import HermesHistoryConnector
 from hermes_pulse.connectors.notes import NotesConnector
@@ -33,6 +34,25 @@ def test_notes_connector_normalizes_local_markdown() -> None:
     assert item.provenance is not None
     assert item.provenance.acquisition_mode == "local_store"
     assert item.provenance.provider == "notes"
+
+
+def test_chatgpt_history_connector_normalizes_official_export() -> None:
+    connector = ChatGPTHistoryConnector()
+
+    items = connector.collect(Path("fixtures/chatgpt_history/sample_export"))
+
+    assert len(items) == 1
+    item = items[0]
+    assert item.id == "chatcmpl-conv-1"
+    assert item.source == "chatgpt_history"
+    assert item.source_kind == "conversation"
+    assert item.title == "旅行計画の相談"
+    assert "user: 来月の京都旅行、2泊3日ならどこを回るべき？" in (item.body or "")
+    assert "assistant: 清水寺、東山、嵐山を軸にすると無理が少ないです。" in (item.body or "")
+    assert item.provenance is not None
+    assert item.provenance.acquisition_mode == "official_export"
+    assert item.provenance.provider == "chatgpt"
+    assert item.metadata["account"] == "mail+chatgpt@tam.nz"
 
 
 def test_grok_history_connector_normalizes_browser_export() -> None:

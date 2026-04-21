@@ -1,0 +1,44 @@
+[
+  {
+    "id": "chatcmpl-conv-1",
+    "title": "旅行計画の相談",
+    "create_time": 1713600000.0,
+    "update_time": 1713600300.0,
+    "mapping": {
+      "node-root": {
+        "id": "node-root",
+        "message": null,
+        "parent": null,
+        "children": ["node-user"]
+      },
+      "node-user": {
+        "id": "node-user",
+        "parent": "node-root",
+        "children": ["node-assistant"],
+        "message": {
+          "id": "msg-user-1",
+          "author": {"role": "user"},
+          "create_time": 1713600001.0,
+          "content": {
+            "content_type": "text",
+            "parts": ["来月の京都旅行、2泊3日ならどこを回るべき？"]
+          }
+        }
+      },
+      "node-assistant": {
+        "id": "node-assistant",
+        "parent": "node-user",
+        "children": [],
+        "message": {
+          "id": "msg-assistant-1",
+          "author": {"role": "assistant"},
+          "create_time": 1713600005.0,
+          "content": {
+            "content_type": "text",
+            "parts": ["清水寺、東山、嵐山を軸にすると無理が少ないです。"]
+          }
+        }
+      }
+    }
+  }
+]

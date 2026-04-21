@@ -10,6 +10,7 @@ from hermes_pulse.archive import write_morning_digest_archive
 from hermes_pulse.collection import collect_for_trigger
 from hermes_pulse.connectors.audit_context import AuditContextConnector, load_audit_context_fixture
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
+from hermes_pulse.connectors.chatgpt_history import ChatGPTHistoryConnector
 from hermes_pulse.connectors.gmail import GmailConnector
 from hermes_pulse.connectors.google_calendar import GoogleCalendarConnector
 from hermes_pulse.connectors.grok_history import GrokHistoryConnector
@@ -100,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--gmail-fixture", type=Path)
     parser.add_argument("--location-fixture", type=Path)
     parser.add_argument("--audit-fixture", type=Path)
+    parser.add_argument("--chatgpt-history", type=Path)
     parser.add_argument("--grok-history", type=Path)
     parser.add_argument("--hermes-history", type=Path)
     parser.add_argument("--notes", type=Path)
@@ -888,6 +890,7 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
     location_fixture = getattr(args, "location_fixture", None)
     audit_fixture = getattr(args, "audit_fixture", None)
     notes_path = getattr(args, "notes", None)
+    chatgpt_history_path = getattr(args, "chatgpt_history", None)
     calendar_runner = _build_json_runner(calendar_fixture)
     gmail_runner = _build_json_runner(gmail_fixture)
     occurred_at = (getattr(args, "now", None) or datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"))
@@ -922,6 +925,10 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
         connectors["google_calendar"] = BoundConnector(lambda: GoogleCalendarConnector(runner=calendar_runner).collect())
     if gmail_runner is not None:
         connectors["gmail"] = BoundConnector(lambda: GmailConnector(runner=gmail_runner).collect())
+    if chatgpt_history_path is not None:
+        connectors["chatgpt_history"] = BoundConnector(
+            lambda: ChatGPTHistoryConnector().collect(chatgpt_history_path)
+        )
     if notes_path is not None:
         connectors["notes"] = BoundConnector(lambda: NotesConnector().collect(notes_path))
     if audit_runner is not None:
@@ -976,6 +983,10 @@ def _build_digest_with_source_errors(command: str, args: argparse.Namespace) -> 
         connectors["google_calendar"] = BoundConnector(lambda: GoogleCalendarConnector(runner=calendar_runner).collect())
     if gmail_runner is not None:
         connectors["gmail"] = BoundConnector(lambda: GmailConnector(runner=gmail_runner).collect())
+    if getattr(args, "chatgpt_history", None) is not None:
+        connectors["chatgpt_history"] = BoundConnector(
+            lambda: ChatGPTHistoryConnector().collect(args.chatgpt_history)
+        )
     if args.x_signals:
         signal_types = [value.strip() for value in args.x_signals.split(",") if value.strip()]
         connectors["x_signals"] = BoundConnector(
