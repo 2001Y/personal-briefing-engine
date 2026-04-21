@@ -880,14 +880,14 @@ def test_review_trigger_quality_surfaces_stale_inputs_from_runtime_state(tmp_pat
     ]
 
 
-def test_location_dwell_records_location_context_freshness_in_state_db(tmp_path: Path) -> None:
+def test_location_walk_records_location_context_freshness_in_state_db(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
-    output_path = tmp_path / "nudges" / "location-dwell.md"
+    output_path = tmp_path / "nudges" / "location-walk.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -911,17 +911,17 @@ def test_location_dwell_records_location_context_freshness_in_state_db(tmp_path:
     assert row == ("location_context", "2026-04-20T12:00:00Z", "2026-04-20T12:00:00Z", None)
 
 
-def test_location_dwell_records_location_context_poll_when_live_runner_returns_no_item(monkeypatch, tmp_path: Path) -> None:
+def test_location_walk_records_location_context_poll_when_live_runner_returns_no_item(monkeypatch, tmp_path: Path) -> None:
     import hermes_pulse.connectors.location_context as location_context_module
 
     monkeypatch.setattr(location_context_module, "_run_location_context", lambda: {})
     database_path = tmp_path / "state" / "hermes-pulse.db"
-    output_path = tmp_path / "nudges" / "location-dwell-empty.md"
+    output_path = tmp_path / "nudges" / "location-walk-empty.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--state-db",
@@ -944,15 +944,15 @@ def test_location_dwell_records_location_context_poll_when_live_runner_returns_n
     assert row == ("location_context", None, "2026-04-20T12:30:00Z", "2026-04-20T12:30:00Z", None)
 
 
-def test_location_dwell_skips_suppressed_items_within_trigger_cooldown(tmp_path: Path) -> None:
+def test_location_walk_skips_suppressed_items_within_trigger_cooldown(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
-    first_output_path = tmp_path / "nudges" / "location-dwell-first.md"
-    second_output_path = tmp_path / "nudges" / "location-dwell-second.md"
+    first_output_path = tmp_path / "nudges" / "location-walk-first.md"
+    second_output_path = tmp_path / "nudges" / "location-walk-second.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -971,7 +971,7 @@ def test_location_dwell_skips_suppressed_items_within_trigger_cooldown(tmp_path:
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -998,20 +998,20 @@ def test_location_dwell_skips_suppressed_items_within_trigger_cooldown(tmp_path:
         ).fetchone()
 
     assert suppression_rows == [
-        ("location.dwell", "already_delivered_in_same_trigger_family", "2026-04-20T13:00:00Z")
+        ("location.walk", "already_delivered_in_same_trigger_family", "2026-04-20T13:00:00Z")
     ]
     assert cursor_row == ("location_context", "2026-04-20T12:30:00Z", "2026-04-20T12:30:00Z")
 
 
-def test_location_dwell_delivers_again_after_trigger_cooldown_expires(tmp_path: Path) -> None:
+def test_location_walk_delivers_again_after_trigger_cooldown_expires(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
-    first_output_path = tmp_path / "nudges" / "location-dwell-first.md"
-    second_output_path = tmp_path / "nudges" / "location-dwell-second.md"
+    first_output_path = tmp_path / "nudges" / "location-walk-first.md"
+    second_output_path = tmp_path / "nudges" / "location-walk-second.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -1030,7 +1030,7 @@ def test_location_dwell_delivers_again_after_trigger_cooldown_expires(tmp_path: 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -1056,6 +1056,42 @@ def test_location_dwell_delivers_again_after_trigger_cooldown_expires(tmp_path: 
     assert suppression_rows == [("2026-04-20T13:00:00Z",), ("2026-04-20T14:01:00Z",)]
 
 
+def test_location_dwell_cli_alias_records_canonical_location_walk_family(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "nudges" / "location-dwell-alias.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(ROOT / "fixtures/location/location_dwell_meal.json"),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        trigger_row = connection.execute(
+            "SELECT event_type, profile_id FROM trigger_runs ORDER BY occurred_at DESC LIMIT 1"
+        ).fetchone()
+        suppression_row = connection.execute(
+            "SELECT trigger_family FROM suppression_history LIMIT 1"
+        ).fetchone()
+
+    assert output_path.exists()
+    assert trigger_row == ("location.walk", "location.walk.default")
+    assert suppression_row == ("location.walk",)
+
+
 def test_record_suppression_history_preserves_zero_minute_cooldown(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
     run_id = "run-123"
@@ -1070,7 +1106,7 @@ def test_record_suppression_history_preserves_zero_minute_cooldown(tmp_path: Pat
                 title="Tokyo Station",
             )
         ],
-        trigger_family="location.dwell",
+        trigger_family="location.walk",
         occurred_at="2026-04-20T12:00:00Z",
         run_id=run_id,
         cooldown_minutes=0,

@@ -298,8 +298,8 @@ def test_location_arrival_invokes_location_connector_only() -> None:
     assert gmail.calls == 0
 
 
-def test_location_dwell_invokes_location_connector_only() -> None:
-    profile = get_trigger_profile("location.dwell.default")
+def test_location_walk_invokes_location_connector_only() -> None:
+    profile = get_trigger_profile("location.walk.default")
     trigger = TriggerEvent(
         id="trigger-7b",
         type=profile.event_type,

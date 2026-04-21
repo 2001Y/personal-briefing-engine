@@ -81,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
             "shopping-replenishment",
             "feed-update",
             "location-arrival",
+            "location-walk",
             "location-dwell",
             "review-trigger-quality",
             "gap-window-mini-digest",
@@ -237,7 +238,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             markdown = _build_feed_update(args)
         elif args.command == "location-arrival":
             markdown = _build_location_arrival(args)
-        elif args.command == "location-dwell":
+        elif args.command in {"location-walk", "location-dwell"}:
             location_errors: dict[str, str] = {}
             location_successful: set[str] = set()
             items = _collect_location_context_items(
@@ -385,6 +386,7 @@ def _profile_for_command(command: str | None):
         "shopping-replenishment": "shopping.replenishment.default",
         "feed-update": "feed.update.default",
         "location-arrival": "location.arrival.default",
+        "location-walk": "location.walk.default",
         "location-dwell": "location.dwell.default",
         "review-trigger-quality": "review.trigger_quality.default",
         "gap-window-mini-digest": "calendar.gap_window.default",
@@ -939,7 +941,7 @@ def _build_event_trigger_items(profile_id: str, args: argparse.Namespace) -> lis
             lambda: KnownSourceSearchConnector(fetcher=search_fetcher).collect(source_registry)
         ),
     }
-    if location_fixture is not None or profile.id == "location.dwell.default":
+    if location_fixture is not None or profile.id == "location.walk.default":
         connectors["location_context"] = BoundConnector(
             lambda: LocationContextConnector(
                 runner=(lambda: load_location_context_fixture(location_fixture)) if location_fixture is not None else None

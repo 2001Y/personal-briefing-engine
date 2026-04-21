@@ -157,7 +157,7 @@ SSOT rules are strict:
 - Canonical path: `local_store`
 - Concrete choice: Dawarich or another local user-controlled location database
 - Why: it preserves raw movement history under user control and avoids over-coupling the runtime to opaque vendor APIs
-- Current minimal runtime: fixture-backed `location.arrival` and `location.dwell` flows are implemented; the intended live scheduler shape is a narrow 5-minute poll against the local store rather than a feed-style broad digest run
+- Current minimal runtime: fixture-backed `location.arrival` and `location.walk` flows are implemented; the intended live scheduler shape is a narrow 5-minute poll against the local store rather than a feed-style broad digest run
 
 ## RSS / feed registries
 

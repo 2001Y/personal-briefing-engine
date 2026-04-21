@@ -12,22 +12,30 @@ WALK_FIXTURE_PATH = ROOT / "fixtures/location/location_walk_default.json"
 STOP_FIXTURE_PATH = ROOT / "fixtures/location/location_dwell_stop.json"
 
 
-def test_trigger_registry_exposes_location_dwell_profile() -> None:
-    profile = get_trigger_profile("location.dwell.default")
+def test_trigger_registry_exposes_location_walk_profile() -> None:
+    profile = get_trigger_profile("location.walk.default")
 
     assert profile.family == "event"
-    assert profile.event_type == "location.dwell"
+    assert profile.event_type == "location.walk"
     assert profile.output_mode == "nudge"
-    assert profile.collection_preset == "location_dwell"
+    assert profile.collection_preset == "location_walk"
 
 
-def test_location_dwell_writes_meal_window_nudge_while_walking(tmp_path: Path) -> None:
-    output_path = tmp_path / "nudges" / "location-dwell-meal.md"
+def test_trigger_registry_keeps_location_dwell_as_compatibility_alias() -> None:
+    profile = get_trigger_profile("location.dwell.default")
+
+    assert profile.id == "location.walk.default"
+    assert profile.event_type == "location.walk"
+    assert profile.collection_preset == "location_walk"
+
+
+def test_location_walk_writes_meal_window_nudge_while_walking(tmp_path: Path) -> None:
+    output_path = tmp_path / "nudges" / "location-walk-meal.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -48,13 +56,13 @@ def test_location_dwell_writes_meal_window_nudge_while_walking(tmp_path: Path) -
     assert "https://maps.google.com/?q=Shibuya+Hikarie" in content
 
 
-def test_location_dwell_writes_snack_window_nudge_while_walking(tmp_path: Path) -> None:
-    output_path = tmp_path / "nudges" / "location-dwell-snack.md"
+def test_location_walk_writes_snack_window_nudge_while_walking(tmp_path: Path) -> None:
+    output_path = tmp_path / "nudges" / "location-walk-snack.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -72,13 +80,13 @@ def test_location_dwell_writes_snack_window_nudge_while_walking(tmp_path: Path) 
     assert "Ginza Six" in content
 
 
-def test_location_dwell_writes_walking_nudge(tmp_path: Path) -> None:
-    output_path = tmp_path / "nudges" / "location-dwell-walk.md"
+def test_location_walk_writes_walking_nudge(tmp_path: Path) -> None:
+    output_path = tmp_path / "nudges" / "location-walk.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -96,13 +104,13 @@ def test_location_dwell_writes_walking_nudge(tmp_path: Path) -> None:
     assert "Tokyo Station" in content
 
 
-def test_location_dwell_still_writes_stationary_nudge_for_dwell_fixture(tmp_path: Path) -> None:
-    output_path = tmp_path / "nudges" / "location-dwell-stop.md"
+def test_location_walk_still_writes_stationary_nudge_for_dwell_fixture(tmp_path: Path) -> None:
+    output_path = tmp_path / "nudges" / "location-walk-stop.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--location-fixture",
@@ -118,4 +126,27 @@ def test_location_dwell_still_writes_stationary_nudge_for_dwell_fixture(tmp_path
     assert "stopped moving" in content
     assert "You have paused here long enough to surface local context." in content
     assert "Walking:" not in content
+    assert "Tokyo Station" in content
+
+
+def test_location_dwell_cli_alias_still_works(tmp_path: Path) -> None:
+    output_path = tmp_path / "nudges" / "location-dwell-alias.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(WALK_FIXTURE_PATH),
+                "--output",
+                str(output_path),
+            ]
+        )
+        == 0
+    )
+
+    content = output_path.read_text()
+    assert "Walking: 11 min" in content
     assert "Tokyo Station" in content

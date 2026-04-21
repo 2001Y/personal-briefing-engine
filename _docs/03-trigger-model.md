@@ -34,7 +34,7 @@ These are narrow, high-intent triggers.
 These use movement or place change as the trigger substrate.
 - `location.area_change`
 - `location.arrival`
-- `location.dwell`
+- `location.walk`
 - later: `location.routine_break`
 
 ### 5. Self-review triggers
@@ -49,7 +49,7 @@ These improve the system itself.
 | `digest.evening` | closure and carry-over | `digest` | 1 |
 | `feed.update` | detect meaningful new information from curated sources | `nudge`, `deep_brief`, or `source_audit` | 1 |
 | `location.arrival` | detect likely arrival | `mini_digest` or `nudge` | 1 |
-| `location.dwell` | detect a meaningful pause that deserves context or a food-timing nudge | `nudge` | 1 |
+| `location.walk` | detect a walking-pace nearby moment first, then fall back to a meaningful pause deserving context or a food-timing nudge | `nudge` | 1 |
 | `calendar.leave_now` | lateness prevention | `warning` | 1 |
 | `mail.operational` | react to reservation/delivery/change | `warning` or `action_prep` | 2 |
 | `shopping.replenishment` | repurchase / refill / restock | `action_prep` | 2 |
@@ -64,7 +64,7 @@ Current implementation note:
 - `mail.operational.default` currently renders a minimal `warning`
 - `shopping.replenishment.default` currently renders a minimal `action_prep`
 - `location.arrival.default` currently renders a minimal `mini_digest`
-- `location.dwell.default` currently renders a minimal `nudge`
+- `location.walk.default` currently renders a minimal `nudge`
 - `review.trigger_quality.default` currently renders a minimal `source_audit`
 
 ## TriggerProfile examples
@@ -114,7 +114,7 @@ Current implementation note:
 ### Scheduled digests do not replace event triggers
 Morning/evening provide broad coherence.
 Event triggers provide timeliness.
-For high-frequency polling (for example every 5 minutes), prefer one narrow trigger like `location.dwell` over many special-case schedulers so suppression, feedback, and cooldown stay inside the trigger model.
+For high-frequency polling (for example every 5 minutes), prefer one narrow trigger like `location.walk` over many special-case schedulers so suppression, feedback, and cooldown stay inside the trigger model. `location-dwell` may remain as a compatibility alias while callers migrate.
 
 ### Feed triggers do not imply news-only behavior
 The same mechanism should support:

@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SOURCE_REGISTRY_PATH = ROOT / "fixtures/source_registry/sample_sources.yaml"
 
 
-def test_location_dwell_can_use_live_location_context_runner(monkeypatch, tmp_path: Path) -> None:
+def test_location_walk_can_use_live_location_context_runner(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         location_context_module,
         "_run_location_context",
@@ -22,12 +22,12 @@ def test_location_dwell_can_use_live_location_context_runner(monkeypatch, tmp_pa
             "detected_reason": "walking_nearby",
         },
     )
-    output_path = tmp_path / "nudges" / "location-dwell-live.md"
+    output_path = tmp_path / "nudges" / "location-walk-live.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--output",
@@ -42,14 +42,14 @@ def test_location_dwell_can_use_live_location_context_runner(monkeypatch, tmp_pa
     assert "walking nearby" in content
 
 
-def test_location_dwell_skips_output_when_live_location_context_has_no_data(monkeypatch, tmp_path: Path) -> None:
+def test_location_walk_skips_output_when_live_location_context_has_no_data(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(location_context_module, "_run_location_context", lambda: {})
-    output_path = tmp_path / "nudges" / "location-dwell-live.md"
+    output_path = tmp_path / "nudges" / "location-walk-live.md"
 
     assert (
         hermes_pulse.cli.main(
             [
-                "location-dwell",
+                "location-walk",
                 "--source-registry",
                 str(SOURCE_REGISTRY_PATH),
                 "--output",

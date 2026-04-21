@@ -69,7 +69,7 @@ class LaunchdPlistSpec:
 
 
 @dataclass(frozen=True)
-class LocationDwellWrapperSpec:
+class LocationWalkWrapperSpec:
     python_executable: Path
     repo_root: Path
     channel: str
@@ -79,6 +79,9 @@ class LocationDwellWrapperSpec:
     source_registry: Path | None = None
     working_directory: Path | None = None
     shared_env_path: Path = DEFAULT_SHARED_ENV_PATH
+
+
+LocationDwellWrapperSpec = LocationWalkWrapperSpec
 
 
 @dataclass(frozen=True)
@@ -124,6 +127,21 @@ def render_direct_delivery_wrapper(spec: DirectDeliveryWrapperSpec) -> str:
     working_directory = Path(spec.working_directory or repo_root)
     python_path_root = repo_root / "src"
     command = " ".join(shlex.quote(argument) for argument in build_direct_delivery_program_arguments(spec))
+    refresh_command = None
+    if spec.grok_history is not None:
+        refresh_args = [
+            str(spec.python_executable),
+            "-m",
+            "hermes_pulse.cli",
+            "refresh-grok-history",
+            "--output-dir",
+            str(spec.grok_history),
+            "--cdp-port",
+            "9223",
+            "--page-size",
+            "100",
+        ]
+        refresh_command = " ".join(shlex.quote(argument) for argument in refresh_args)
     shared_env_path = spec.shared_env_path
     shared_env_reference = (
         f"~/{shared_env_path.relative_to(Path.home())}"
@@ -155,18 +173,19 @@ def render_direct_delivery_wrapper(spec: DirectDeliveryWrapperSpec) -> str:
             "fi",
             "",
             f"cd {shlex.quote(str(working_directory))}",
+            *(([refresh_command] if refresh_command is not None else [])),
             f"exec {command}",
             "",
         ]
     )
 
 
-def build_location_dwell_program_arguments(spec: LocationDwellWrapperSpec) -> list[str]:
+def build_location_walk_program_arguments(spec: LocationWalkWrapperSpec) -> list[str]:
     args = [
         str(spec.python_executable),
         "-m",
         "hermes_pulse.cli",
-        "location-dwell",
+        "location-walk",
     ]
     if spec.source_registry is not None:
         args.extend(["--source-registry", str(spec.source_registry)])
@@ -174,7 +193,7 @@ def build_location_dwell_program_arguments(spec: LocationDwellWrapperSpec) -> li
     return args
 
 
-def build_location_dwell_slack_post_arguments(spec: LocationDwellWrapperSpec) -> list[str]:
+def build_location_walk_slack_post_arguments(spec: LocationWalkWrapperSpec) -> list[str]:
     args = [
         str(spec.python_executable),
         "-m",
@@ -189,7 +208,7 @@ def build_location_dwell_slack_post_arguments(spec: LocationDwellWrapperSpec) ->
     return args
 
 
-def render_location_dwell_wrapper(spec: LocationDwellWrapperSpec) -> str:
+def render_location_walk_wrapper(spec: LocationWalkWrapperSpec) -> str:
     repo_root = Path(spec.repo_root)
     working_directory = Path(spec.working_directory or repo_root)
     python_path_root = repo_root / "src"
@@ -200,8 +219,8 @@ def render_location_dwell_wrapper(spec: LocationDwellWrapperSpec) -> str:
         else str(shared_env_path)
     )
     shared_env_shell = shared_env_reference if shared_env_reference.startswith("~/") else shlex.quote(shared_env_reference)
-    cli_command = " ".join(shlex.quote(argument) for argument in build_location_dwell_program_arguments(spec))
-    slack_command = " ".join(shlex.quote(argument) for argument in build_location_dwell_slack_post_arguments(spec))
+    cli_command = " ".join(shlex.quote(argument) for argument in build_location_walk_program_arguments(spec))
+    slack_command = " ".join(shlex.quote(argument) for argument in build_location_walk_slack_post_arguments(spec))
     output_path = shlex.quote(str(spec.output_path))
     return "\n".join(
         [
@@ -224,6 +243,11 @@ def render_location_dwell_wrapper(spec: LocationDwellWrapperSpec) -> str:
             "",
         ]
     )
+
+
+build_location_dwell_program_arguments = build_location_walk_program_arguments
+build_location_dwell_slack_post_arguments = build_location_walk_slack_post_arguments
+render_location_dwell_wrapper = render_location_walk_wrapper
 
 
 def render_launchd_plist(spec: LaunchdPlistSpec) -> str:
