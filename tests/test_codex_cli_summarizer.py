@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from hermes_pulse.summarization.codex_cli import build_codex_digest_prompt
+from hermes_pulse.summarization.codex_cli import build_codex_digest_prompt, build_summary_format_instructions
 
 
 def test_build_codex_digest_prompt_limits_embedded_raw_items_and_reports_omissions(tmp_path: Path) -> None:
@@ -43,3 +43,10 @@ def test_build_codex_digest_prompt_limits_embedded_raw_items_and_reports_omissio
     assert "raw item counts" in prompt
     assert '"included_in_prompt": 200' in prompt
     assert '"omitted_from_prompt": 50' in prompt
+
+
+def test_build_summary_format_instructions_requires_inline_markdown_links_in_briefing_v1() -> None:
+    instructions = build_summary_format_instructions("briefing-v1")
+
+    assert any("文中" in line and "Markdown リンク" in line for line in instructions)
+    assert any("URL を文末に列挙しない" in line for line in instructions)
