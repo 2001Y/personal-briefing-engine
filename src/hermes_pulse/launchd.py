@@ -27,6 +27,7 @@ class DirectDeliveryWrapperSpec:
     chatgpt_history: Path | None = None
     chatgpt_export_dir: Path | None = None
     grok_history: Path | None = None
+    grok_history_fallback_db: Path | None = None
     hermes_history: Path | None = None
     notes: Path | None = None
     x_signals: str | None = None
@@ -168,12 +169,37 @@ def render_direct_delivery_wrapper(spec: DirectDeliveryWrapperSpec) -> str:
             "100",
         ]
         refresh_command = " ".join(shlex.quote(argument) for argument in refresh_args)
-        refresh_commands.append(
-            _render_optional_refresh_command(
-                refresh_command,
-                warning_message="warning: grok history refresh failed; continuing with existing import",
+        if spec.grok_history_fallback_db is not None:
+            fallback_args = [
+                str(spec.python_executable),
+                "-m",
+                "hermes_pulse.cli",
+                "refresh-grok-history-fallback",
+                "--history-db",
+                str(spec.grok_history_fallback_db),
+                "--output-dir",
+                str(spec.grok_history),
+            ]
+            fallback_command = " ".join(shlex.quote(argument) for argument in fallback_args)
+            refresh_commands.append(
+                "\n".join(
+                    [
+                        f"if ! {refresh_command}; then",
+                        '  echo "warning: grok history refresh failed; trying Chrome History fallback" >&2',
+                        f"  if ! {fallback_command}; then",
+                        '    echo "warning: grok history fallback also failed; continuing with existing import" >&2',
+                        "  fi",
+                        "fi",
+                    ]
+                )
             )
-        )
+        else:
+            refresh_commands.append(
+                _render_optional_refresh_command(
+                    refresh_command,
+                    warning_message="warning: grok history refresh failed; continuing with existing import",
+                )
+            )
     shared_env_path = spec.shared_env_path
     shared_env_reference = (
         f"~/{shared_env_path.relative_to(Path.home())}"

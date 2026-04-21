@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from pathlib import Path
 
@@ -69,6 +70,51 @@ def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path:
     assert result.digest_path == digest_path
     assert result.content == digest_path.read_text()
     assert result.slack_response == {"ok": True, "channel": "C123", "ts": "1712345.6789"}
+
+
+def test_post_canonical_digest_to_slack_prepends_grok_fallback_notice_when_history_used(tmp_path: Path) -> None:
+    archive_directory = tmp_path / date.today().isoformat()
+    digest_path = archive_directory / "summary" / "codex-digest.md"
+    raw_items_path = archive_directory / "raw" / "collected-items.json"
+    digest_path.parent.mkdir(parents=True, exist_ok=True)
+    raw_items_path.parent.mkdir(parents=True, exist_ok=True)
+    digest_path.write_text("☀ *Hermes Pulse Morning Briefing*\n\n▫ 主要トピック\n- test\n")
+    raw_items_path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "conv-1",
+                    "source": "grok_history",
+                    "source_kind": "conversation",
+                    "title": "Fallback title",
+                    "excerpt": None,
+                    "body": None,
+                    "url": None,
+                    "timestamps": {"created_at": None, "updated_at": "2026-04-21T12:00:00Z", "start_at": None, "end_at": None},
+                    "provenance": {
+                        "provider": "grok",
+                        "acquisition_mode": "local_browser_history",
+                        "authority_tier": None,
+                        "primary_source_url": None,
+                        "raw_record_id": "conv-1",
+                    },
+                    "metadata": {"response_count": 0},
+                }
+            ]
+        )
+    )
+    calls: list[str] = []
+
+    result = direct_delivery.post_canonical_digest_to_slack(
+        archive_directory,
+        channel="C123",
+        post_message=lambda text, *_args, **_kwargs: calls.append(text) or {"ok": True, "channel": "C123", "ts": "1"},
+    )
+
+    assert calls == [
+        "⚠ Grok履歴はフォールバック（Chrome History）で取得。会話本文は未取得または不完全の可能性があります。\n\n☀ *Hermes Pulse Morning Briefing*\n\n▫ 主要トピック\n- test\n"
+    ]
+    assert result.content == digest_path.read_text()
 
 
 def test_post_canonical_digest_to_slack_converts_markdown_links_to_slack_links(tmp_path: Path) -> None:

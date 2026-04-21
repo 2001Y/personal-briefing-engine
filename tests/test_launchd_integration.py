@@ -27,6 +27,7 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
         chatgpt_history=Path("/Users/akitani/Pulse/Imports/chatgpt"),
         chatgpt_export_dir=Path("/Users/akitani/Downloads"),
         grok_history=Path("/Users/akitani/Pulse/Imports/grok/browser-export"),
+        grok_history_fallback_db=Path("/Users/akitani/Library/Application Support/Google/Chrome/Profile 4/History"),
         x_signals="bookmarks,likes,home_timeline_reverse_chronological",
         codex_model="gpt-5.4",
         summary_format="briefing-v1",
@@ -50,7 +51,19 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
     assert 'if ! /opt/homebrew/bin/python3 -m hermes_pulse.cli refresh-chatgpt-history --input-dir /Users/akitani/Downloads --output-dir /Users/akitani/Pulse/Imports/chatgpt; then' in wrapper
     assert 'echo "warning: chatgpt history refresh failed; continuing with existing import" >&2' in wrapper
     assert 'if ! /opt/homebrew/bin/python3 -m hermes_pulse.cli refresh-grok-history --output-dir /Users/akitani/Pulse/Imports/grok/browser-export --cdp-port 9223 --page-size 100; then' in wrapper
-    assert 'echo "warning: grok history refresh failed; continuing with existing import" >&2' in wrapper
+    assert 'echo "warning: grok history refresh failed; trying Chrome History fallback" >&2' in wrapper
+    fallback_line = next(line for line in wrapper.splitlines() if "refresh-grok-history-fallback" in line)
+    assert shlex.split(fallback_line.strip().removeprefix("if ! ").removesuffix("; then")) == [
+        "/opt/homebrew/bin/python3",
+        "-m",
+        "hermes_pulse.cli",
+        "refresh-grok-history-fallback",
+        "--history-db",
+        "/Users/akitani/Library/Application Support/Google/Chrome/Profile 4/History",
+        "--output-dir",
+        "/Users/akitani/Pulse/Imports/grok/browser-export",
+    ]
+    assert 'echo "warning: grok history fallback also failed; continuing with existing import" >&2' in wrapper
     assert "/opt/homebrew/bin/python3" in wrapper
 
     exec_line = next(line for line in wrapper.splitlines() if line.startswith("exec "))
@@ -185,6 +198,7 @@ def test_generate_launchd_artifacts_writes_wrapper_and_plist_to_output_directory
             chatgpt_history=Path("/Users/akitani/Pulse/Imports/chatgpt"),
             chatgpt_export_dir=Path("/Users/akitani/Downloads"),
             grok_history=Path("/Users/akitani/Pulse/Imports/grok/browser-export"),
+            grok_history_fallback_db=Path("/Users/akitani/Library/Application Support/Google/Chrome/Profile 4/History"),
             x_signals="bookmarks,likes",
             codex_model="gpt-5.4",
             summary_format="briefing-v1",

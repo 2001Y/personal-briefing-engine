@@ -1,5 +1,6 @@
 import argparse
 import importlib.util
+import json
 import re
 import time
 from collections.abc import Callable, Sequence
@@ -140,6 +141,7 @@ def post_canonical_digest_to_slack(
 
     content = digest_path.read_text()
     rendered_content = _render_digest_for_slack(content)
+    rendered_content = _prepend_grok_fallback_notice_if_needed(rendered_content, archive_directory)
     message_chunks = _split_slack_text(rendered_content, limit=slack_message_limit)
     poster = post_message or load_slack_direct_post_message()
     slack_responses = _post_slack_chunks(
@@ -178,6 +180,30 @@ def load_slack_direct_post_message(script_path: str | Path = DEFAULT_SLACK_DIREC
 
 def _render_digest_for_slack(markdown: str) -> str:
     return MARKDOWN_LINK_RE.sub(lambda match: f"<{match.group(2)}|{match.group(1)}>", markdown)
+
+
+GROK_FALLBACK_NOTICE = "⚠ Grok履歴はフォールバック（Chrome History）で取得。会話本文は未取得または不完全の可能性があります。"
+
+
+def _prepend_grok_fallback_notice_if_needed(markdown: str, archive_directory: Path) -> str:
+    raw_items_path = archive_directory / "raw" / "collected-items.json"
+    if not raw_items_path.exists():
+        return markdown
+    try:
+        payload = json.loads(raw_items_path.read_text())
+    except json.JSONDecodeError:
+        return markdown
+    if not isinstance(payload, list):
+        return markdown
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        if item.get("source") != "grok_history":
+            continue
+        provenance = item.get("provenance") or {}
+        if isinstance(provenance, dict) and provenance.get("acquisition_mode") == "local_browser_history":
+            return f"{GROK_FALLBACK_NOTICE}\n\n{markdown}"
+    return markdown
 
 
 def _split_slack_text(text: str, *, limit: int = DEFAULT_SLACK_MESSAGE_LIMIT) -> list[str]:
