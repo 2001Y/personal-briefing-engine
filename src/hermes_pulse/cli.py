@@ -46,7 +46,7 @@ from hermes_pulse.rendering import (
     render_gap_window_mini_digest,
     render_leave_now_warning,
     render_location_arrival_mini_digest,
-    render_location_dwell_nudge,
+    render_location_walk_nudge,
     render_mail_operational_warning,
     render_shopping_replenishment_action_prep,
     render_trigger_quality_review,
@@ -263,7 +263,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                         run_id,
                         profile.cooldown_minutes,
                     )
-            markdown = render_location_dwell_nudge(deliverable_items)
+            markdown = render_location_walk_nudge(deliverable_items)
         elif args.command == "review-trigger-quality":
             items = _build_event_trigger_items("review.trigger_quality.default", args)
             markdown = render_trigger_quality_review(items)
@@ -867,9 +867,12 @@ def _build_location_arrival(args: argparse.Namespace) -> str | None:
     return render_location_arrival_mini_digest(items)
 
 
-def _build_location_dwell(args: argparse.Namespace) -> str | None:
+def _build_location_walk(args: argparse.Namespace) -> str | None:
     items = _collect_location_context_items(location_fixture=getattr(args, "location_fixture", None))
-    return render_location_dwell_nudge(items)
+    return render_location_walk_nudge(items)
+
+
+_build_location_dwell = _build_location_walk
 
 
 def _collect_location_context_items(

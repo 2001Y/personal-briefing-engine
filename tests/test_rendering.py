@@ -1,5 +1,9 @@
 from hermes_pulse.models import CitationLink, CollectedItem, IntentSignals, Provenance
-from hermes_pulse.rendering import render_location_dwell_nudge, render_morning_digest
+from hermes_pulse.rendering import (
+    render_location_dwell_nudge,
+    render_location_walk_nudge,
+    render_morning_digest,
+)
 from hermes_pulse.synthesis import synthesize_candidates
 
 
@@ -145,7 +149,7 @@ def test_render_morning_digest_strips_html_from_summaries() -> None:
     assert "<em>" not in digest
 
 
-def test_render_location_dwell_nudge_defaults_stationary_items_without_detected_reason() -> None:
+def test_render_location_walk_nudge_defaults_stationary_items_without_detected_reason() -> None:
     item = CollectedItem(
         id="location_context:tokyo-station",
         source="location_context",
@@ -158,7 +162,7 @@ def test_render_location_dwell_nudge_defaults_stationary_items_without_detected_
         },
     )
 
-    markdown = render_location_dwell_nudge([item])
+    markdown = render_location_walk_nudge([item])
 
     assert markdown is not None
     assert "Reason: stopped moving" in markdown
@@ -167,7 +171,19 @@ def test_render_location_dwell_nudge_defaults_stationary_items_without_detected_
     assert "You have paused here long enough to surface local context." in markdown
 
 
-def test_render_location_dwell_nudge_normalizes_unknown_reason_by_motion_mode() -> None:
+def test_render_location_dwell_nudge_alias_matches_location_walk_nudge() -> None:
+    item = CollectedItem(
+        id="location_context:walking",
+        source="location_context",
+        source_kind="place",
+        title="Walking",
+        metadata={"walking_minutes": 6, "detected_reason": "future_reason"},
+    )
+
+    assert render_location_dwell_nudge([item]) == render_location_walk_nudge([item])
+
+
+def test_render_location_walk_nudge_normalizes_unknown_reason_by_motion_mode() -> None:
     stationary_item = CollectedItem(
         id="location_context:stationary",
         source="location_context",
@@ -183,8 +199,8 @@ def test_render_location_dwell_nudge_normalizes_unknown_reason_by_motion_mode() 
         metadata={"walking_minutes": 6, "detected_reason": "future_reason"},
     )
 
-    stationary_markdown = render_location_dwell_nudge([stationary_item])
-    walking_markdown = render_location_dwell_nudge([walking_item])
+    stationary_markdown = render_location_walk_nudge([stationary_item])
+    walking_markdown = render_location_walk_nudge([walking_item])
 
     assert stationary_markdown is not None and "Reason: stopped moving" in stationary_markdown
     assert walking_markdown is not None and "Reason: walking nearby" in walking_markdown

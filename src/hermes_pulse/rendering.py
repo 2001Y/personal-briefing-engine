@@ -138,7 +138,7 @@ def render_location_arrival_mini_digest(items: Iterable[CollectedItem]) -> str |
     return "\n".join(lines).rstrip() + "\n"
 
 
-def render_location_dwell_nudge(items: Iterable[CollectedItem]) -> str | None:
+def render_location_walk_nudge(items: Iterable[CollectedItem]) -> str | None:
     item = next((value for value in items if value.source == "location_context"), None)
     if item is None:
         return None
@@ -157,7 +157,7 @@ def render_location_dwell_nudge(items: Iterable[CollectedItem]) -> str | None:
         "# Location nudge",
         "",
         f"- Place: {item.title or item.id}",
-        f"- Reason: {_render_location_dwell_reason(reason)}",
+        f"- Reason: {_render_location_walk_reason(reason)}",
     ]
     if walking_minutes is not None:
         lines.append(f"- Walking: {walking_minutes} min")
@@ -165,7 +165,7 @@ def render_location_dwell_nudge(items: Iterable[CollectedItem]) -> str | None:
         lines.append(f"- Dwell: {dwell_minutes} min")
     if average_speed_m_s is not None:
         lines.append(f"- Pace: {average_speed_m_s} m/s")
-    reason_message = _render_location_dwell_message(reason, walking=walking_minutes is not None)
+    reason_message = _render_location_walk_message(reason, walking=walking_minutes is not None)
     if reason_message:
         lines.append(f"- {reason_message}")
     for value in context:
@@ -388,7 +388,7 @@ def _normalize_location_reason(reason: object, *, walking: bool) -> str:
     return "walking_nearby" if walking else "stopped_moving"
 
 
-def _render_location_dwell_reason(reason: object) -> str:
+def _render_location_walk_reason(reason: object) -> str:
     return {
         "meal_window": "meal window",
         "snack_window": "snack window",
@@ -398,7 +398,7 @@ def _render_location_dwell_reason(reason: object) -> str:
     }.get(reason, "stopped moving")
 
 
-def _render_location_dwell_message(reason: object, *, walking: bool = False) -> str:
+def _render_location_walk_message(reason: object, *, walking: bool = False) -> str:
     if reason == "meal_window":
         return "Lunch window is open along your walk." if walking else "Lunch window is open nearby."
     if reason == "snack_window":
@@ -408,6 +408,11 @@ def _render_location_dwell_message(reason: object, *, walking: bool = False) -> 
         "stopped_moving": "You have paused here long enough to surface local context.",
         "transient_stop": "This stop still looks brief, so keep the context lightweight.",
     }.get(reason, "You are moving at a walking pace, so nearby options can stay lightweight.")
+
+
+render_location_dwell_nudge = render_location_walk_nudge
+_render_location_dwell_reason = _render_location_walk_reason
+_render_location_dwell_message = _render_location_walk_message
 
 
 def _strip_html(text: str) -> str:

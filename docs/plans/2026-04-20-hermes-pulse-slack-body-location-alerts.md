@@ -1,10 +1,12 @@
 # Hermes Pulse Slack/body/location alerts Implementation Plan
 
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
+>
+> **Historical note (2026-04-21):** this plan originally used the names `location.dwell` / `location-dwell`. The canonical trigger is now `location.walk` / `location-walk`; old names remain only as compatibility aliases.
 
 **Goal:** Make Hermes Pulse Slack delivery actually usable in production, enrich feed items with article body text when reality supports it, and add a high-frequency location-driven alert slice that fits Hermes Pulse’s event-first design instead of degenerating into a noisy tracker.
 
-**Architecture:** Keep the existing `trigger -> collect -> compose -> deliver` shape. Add a Slack-native delivery formatting layer after synthesis, add bounded body enrichment inside the feed connector with strong provenance and reversible defaults, and add a new narrow `location.dwell` trigger family for high-frequency polling that can emit context-aware nudges for stopped-moving / meal / snack moments without pretending to solve all location intelligence in v1.
+**Architecture:** Keep the existing `trigger -> collect -> compose -> deliver` shape. Add a Slack-native delivery formatting layer after synthesis, add bounded body enrichment inside the feed connector with strong provenance and reversible defaults, and add a new narrow `location.walk` trigger family for high-frequency polling that can emit context-aware nudges for walking-nearby / stopped-moving / meal / snack moments without pretending to solve all location intelligence in v1.
 
 **Tech Stack:** Python 3.11+, argparse, pytest, standard-library HTML parsing/networking, existing Hermes Pulse trigger registry/collection/rendering/delivery helpers.
 
@@ -24,8 +26,8 @@
    - Keep extraction small and deterministic rather than adding a heavy scraping stack.
 
 3. **High-frequency location alerts should be one narrow trigger family, not many ad-hoc jobs.**
-   - Add `location.dwell.default` as the canonical trigger.
-   - Let one trigger emit a `nudge` with different reasons in metadata: `stopped_moving`, `meal_window`, `snack_window`.
+   - Add `location.walk.default` as the canonical trigger (`location.dwell.default` kept only as a compatibility alias).
+   - Let one trigger emit a `nudge` with different reasons in metadata: `walking_nearby`, `stopped_moving`, `meal_window`, `snack_window`.
    - This matches the product docs: event-driven proactivity, minimal layers, right-moment delivery, and trigger-specific suppression.
 
 4. **5-minute monitoring belongs to the scheduler/runtime layer, but the repo should first implement the trigger + fixture path.**
@@ -47,7 +49,7 @@
 Document:
 - why Markdown links fail in Slack now
 - why `body` is missing today
-- why `location.dwell` is the right high-frequency trigger shape
+- why `location.walk` is the right high-frequency trigger shape
 - the TDD sequence below
 
 **Step 2: Commit later with the feature/docs checkpoints**
@@ -212,7 +214,7 @@ git commit -m "feat: enrich feed items with fetched article bodies"
 
 ---
 
-## Task 4: Add failing tests for the new `location.dwell` trigger family
+## Task 4: Add failing tests for the new `location.walk` trigger family
 
 **Objective:** Define the high-frequency location alert slice around one canonical trigger instead of many special-case schedulers.
 
@@ -222,19 +224,19 @@ git commit -m "feat: enrich feed items with fetched article bodies"
 - Modify: `src/hermes_pulse/cli.py`
 - Modify: `src/hermes_pulse/rendering.py`
 - Modify: `src/hermes_pulse/connectors/location_context.py`
-- Create: `tests/test_location_dwell.py`
+- Create: `tests/test_location_walk.py` (historically `tests/test_location_dwell.py`)
 - Modify: `tests/test_collection.py`
-- Create: `fixtures/location/location_dwell_meal.json`
-- Create: `fixtures/location/location_dwell_snack.json`
-- Create: `fixtures/location/location_dwell_stop.json`
+- Create: `fixtures/location/location_walk_meal.json`
+- Create: `fixtures/location/location_walk_snack.json`
+- Create: `fixtures/location/location_walk_stop.json`
 
 **Step 1: Write failing tests**
 
 Add tests that assert:
-1. `location.dwell.default` resolves from the registry with output mode `nudge`
-2. collection preset `location_dwell` invokes only `location_context`
-3. CLI command `location-dwell` writes a nudge markdown file from a location fixture
-4. dwell output includes:
+1. `location.walk.default` resolves from the registry with output mode `nudge`
+2. collection preset `location_walk` invokes only `location_context` (`location_dwell` kept only as compatibility alias)
+3. CLI command `location-walk` writes a nudge markdown file from a location fixture (`location-dwell` kept as alias)
+4. location-walk output includes:
    - place name
    - reason-specific message
    - Google Maps URL
@@ -244,7 +246,7 @@ Add tests that assert:
 
 Run:
 ```bash
-pytest tests/test_location_dwell.py tests/test_collection.py -q
+pytest tests/test_location_walk.py tests/test_collection.py -q
 ```
 
 Expected: FAIL because the trigger/command/rendering do not exist yet.
@@ -252,16 +254,16 @@ Expected: FAIL because the trigger/command/rendering do not exist yet.
 **Step 3: Implement minimal code**
 
 Implementation shape:
-- add `location.dwell.default` to `trigger_registry.py`
-- add `location_dwell` preset in `collection.py`
-- extend `location_context.py` so fixtures can carry:
+- add `location.walk.default` to `trigger_registry.py`
+- add `location_walk` preset in `collection.py` (keep `location_dwell` alias only for compatibility)
+- define the fixture schema emitted by `LocationContextConnector` with fields:
   - `detected_reason`
   - `place_category`
   - `local_time`
   - `dwell_minutes`
   - `nearby_context`
-- add renderer `render_location_dwell_nudge(items)` in `rendering.py`
-- add CLI command `location-dwell` in `cli.py`
+- add renderer `render_location_walk_nudge(items)` in `rendering.py` (keep `render_location_dwell_nudge` alias)
+- add CLI command `location-walk` in `cli.py` (keep `location-dwell` alias)
 
 Behavior rules:
 - `meal_window` when local time is around lunch/dinner and the place/context suggests eating is plausible
@@ -274,7 +276,7 @@ Behavior rules:
 
 Run:
 ```bash
-pytest tests/test_location_dwell.py tests/test_collection.py -q
+pytest tests/test_location_walk.py tests/test_collection.py -q
 ```
 
 Expected: PASS.
@@ -291,7 +293,7 @@ Expected: PASS.
 **Step 6: Commit**
 
 ```bash
-git add src/hermes_pulse/trigger_registry.py src/hermes_pulse/collection.py src/hermes_pulse/cli.py src/hermes_pulse/rendering.py src/hermes_pulse/connectors/location_context.py tests/test_location_dwell.py tests/test_collection.py fixtures/location/location_dwell_*.json
+git add src/hermes_pulse/trigger_registry.py src/hermes_pulse/collection.py src/hermes_pulse/cli.py src/hermes_pulse/rendering.py src/hermes_pulse/connectors/location_context.py tests/test_location_walk.py tests/test_collection.py fixtures/location/location_walk_*.json
 git commit -m "feat: add location dwell nudge trigger"
 ```
 
@@ -314,7 +316,7 @@ git commit -m "feat: add location dwell nudge trigger"
 Document:
 - Slack direct delivery now renders Slack-native links and splits oversized digests into threads
 - feed connector now enriches `body` from article pages minimally
-- `location.dwell.default` exists as the high-frequency location alert slice
+- `location.walk.default` exists as the high-frequency location alert slice
 - the intended scheduler shape is a 5-minute poll against a local-store location source such as Dawarich
 - suppression/cooldown should prevent spam between successive polls
 
@@ -322,7 +324,7 @@ Document:
 
 At minimum rerun:
 ```bash
-pytest tests/test_direct_delivery.py tests/test_feed_connector.py tests/test_location_dwell.py -q
+pytest tests/test_direct_delivery.py tests/test_feed_connector.py tests/test_location_walk.py -q
 ```
 
 **Step 3: Commit docs**
@@ -353,10 +355,10 @@ Run a fixture-backed test proving article body enrichment lands in `raw/collecte
 
 Run:
 ```bash
-PYTHONPATH=src python -m hermes_pulse.cli location-dwell \
+PYTHONPATH=src python -m hermes_pulse.cli location-walk \
   --source-registry fixtures/source_registry/sample_sources.yaml \
-  --location-fixture fixtures/location/location_dwell_meal.json \
-  --output /tmp/hermes-pulse-location-dwell.md
+  --location-fixture fixtures/location/location_walk_meal.json \
+  --output /tmp/hermes-pulse-location-walk.md
 ```
 
 Expected:
@@ -383,8 +385,8 @@ Expected: PASS.
 - [ ] `DirectDeliveryResult` preserves multi-post delivery results
 - [ ] Feed items can carry fetched article `body`
 - [ ] Feed body fetch failures do not break collection
-- [ ] `location.dwell.default` exists and is test-covered
-- [ ] `location-dwell` CLI works with fixtures
+- [ ] `location.walk.default` exists and is test-covered
+- [ ] `location-walk` CLI works with fixtures (`location-dwell` acceptable only as alias)
 - [ ] Docs reflect what is actually implemented
 - [ ] Full `pytest -q` passes
 
