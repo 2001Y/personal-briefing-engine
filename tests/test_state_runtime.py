@@ -804,6 +804,183 @@ def test_review_trigger_quality_records_feedback_log(tmp_path: Path) -> None:
     ]
 
 
+def test_review_trigger_quality_surfaces_stale_inputs_from_runtime_state(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "reviews" / "trigger-quality.md"
+    initialize_database(database_path)
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "official-blog",
+                "2026-04-18T00:00:00Z",
+                '["official-blog:post-1"]',
+                '["official-blog:post-1"]',
+                "primary",
+                '{"last_error": null}',
+            ),
+        )
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "trusted-secondary-blog",
+                "2026-04-20T11:30:00Z",
+                '["trusted-secondary-blog:post-1"]',
+                '["trusted-secondary-blog:post-1"]',
+                "trusted_secondary",
+                '{"last_error": null}',
+            ),
+        )
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "discovery-only-source",
+                "2026-04-20T11:40:00Z",
+                '["discovery-only-source:https://discover.example.net/1"]',
+                '["discovery-only-source:https://discover.example.net/1"]',
+                "discovery_only",
+                '{"last_error": null}',
+            ),
+        )
+        connection.commit()
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "review-trigger-quality",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    content = output_path.read_text()
+    assert "stale_inputs" in content
+    assert "official-blog" in content
+    assert "location_context" in content
+
+    with sqlite3.connect(database_path) as connection:
+        feedback_rows = connection.execute(
+            "SELECT category, subject, signal, value FROM feedback_log ORDER BY category, signal, subject"
+        ).fetchall()
+
+    assert feedback_rows == [
+        ("source_quality", "location_context", "weak_source", "1"),
+        ("source_quality", "official-blog", "weak_source", "1"),
+    ]
+
+
+def test_location_dwell_records_location_context_freshness_in_state_db(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "nudges" / "location-dwell.md"
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "location-dwell",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--location-fixture",
+                str(ROOT / "fixtures/location/location_dwell_meal.json"),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    with sqlite3.connect(database_path) as connection:
+        row = connection.execute(
+            "SELECT connector_id, last_poll_at, last_success_at, last_error FROM connector_cursors WHERE connector_id = 'location_context'"
+        ).fetchone()
+
+    assert row == ("location_context", "2026-04-20T12:00:00Z", "2026-04-20T12:00:00Z", None)
+
+
+def test_review_trigger_quality_skips_fresh_location_context(tmp_path: Path) -> None:
+    database_path = tmp_path / "state" / "hermes-pulse.db"
+    output_path = tmp_path / "reviews" / "trigger-quality.md"
+    initialize_database(database_path)
+
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "official-blog",
+                "2026-04-20T11:30:00Z",
+                '["official-blog:post-1"]',
+                '["official-blog:post-1"]',
+                "primary",
+                '{"last_error": null}',
+            ),
+        )
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "trusted-secondary-blog",
+                "2026-04-20T11:30:00Z",
+                '["trusted-secondary-blog:post-1"]',
+                '["trusted-secondary-blog:post-1"]',
+                "trusted_secondary",
+                '{"last_error": null}',
+            ),
+        )
+        connection.execute(
+            "INSERT INTO source_registry_state (registry_id, last_poll_at, last_seen_item_ids, last_promoted_item_ids, authority_tier, notes) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "discovery-only-source",
+                "2026-04-20T11:40:00Z",
+                '["discovery-only-source:https://discover.example.net/1"]',
+                '["discovery-only-source:https://discover.example.net/1"]',
+                "discovery_only",
+                '{"last_error": null}',
+            ),
+        )
+        connection.execute(
+            "INSERT INTO connector_cursors (connector_id, cursor, last_poll_at, last_success_at, last_error) VALUES (?, ?, ?, ?, ?)",
+            (
+                "location_context",
+                "point-1",
+                "2026-04-20T11:50:00Z",
+                "2026-04-20T11:50:00Z",
+                None,
+            ),
+        )
+        connection.commit()
+
+    assert (
+        hermes_pulse.cli.main(
+            [
+                "review-trigger-quality",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--state-db",
+                str(database_path),
+                "--output",
+                str(output_path),
+                "--now",
+                "2026-04-20T12:00:00Z",
+            ]
+        )
+        == 0
+    )
+
+    content = output_path.read_text()
+    assert "location_context" not in content
+
+
 def test_shopping_replenishment_records_approval_action_log(tmp_path: Path) -> None:
     database_path = tmp_path / "state" / "hermes-pulse.db"
     output_path = tmp_path / "action-prep" / "shopping.md"
