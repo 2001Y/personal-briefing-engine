@@ -341,7 +341,7 @@ def test_briefing_v1_summary_format_instructions_define_requested_headings() -> 
     assert EXPECTED_PRIMARY_HEADING in instructions[1]
     assert EXPECTED_SCHEDULE_HEADING in instructions[1]
     assert "気になるメモ" not in "\n".join(instructions)
-    assert "同一 source ばかりで埋めず" in "\n".join(instructions)
+    assert "internal source 名に引きずられず" in "\n".join(instructions)
 
 
 def test_summarize_archive_with_retries_uses_requested_model_and_format() -> None:

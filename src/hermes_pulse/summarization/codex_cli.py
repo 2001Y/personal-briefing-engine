@@ -37,7 +37,10 @@ class CodexCliSummarizer:
         raw_items_path = archive_directory / RAW_ITEMS_RELATIVE_PATH
         raw_items = raw_items_path.read_text()
         prompt = build_codex_digest_prompt(archive_directory, raw_items, summary_format=self._summary_format)
-        content = self._invocation.run(prompt, cwd=archive_directory)
+        with tempfile.TemporaryDirectory(prefix="hermes-pulse-codex-") as temp_dir:
+            codex_context = Path(temp_dir)
+            _stage_sanitized_codex_context(archive_directory, codex_context)
+            content = self._invocation.run(prompt, cwd=codex_context)
 
         output_path = archive_directory / CODEX_DIGEST_RELATIVE_PATH
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,24 +102,21 @@ def build_codex_digest_prompt(
     url_title_index = _build_url_title_index(raw_items, title_fetcher=title_fetcher)
     lines = [
         "あなたは Hermes Pulse の要約担当です。",
-        "以下の archive directory から canonical digest を作成してください。",
+        "以下の sanitized archive context から canonical digest を作成してください。",
         "出力は日本語の Markdown のみを返してください。前置きや説明は不要です。",
-        "一次情報として raw/collected-items.json を最優先で根拠にしてください。",
-        "補助的に既存の summary markdown があれば参照してよいですが、raw JSON と矛盾する場合は raw JSON を優先してください。",
+        "一次情報としてこの prompt に埋め込まれた sanitized grounding を最優先で根拠にしてください。",
         "本文中のリンクは可能な限り保持し、URL を壊さないでください。",
         "不明な点は断定せず、与えられた情報だけで簡潔に要約してください。",
-        "raw/collected-items.json の全文は archive directory 内に残っている前提です。埋め込み JSON は要約用の抜粋なので、必要なら件数メタデータを踏まえて偏りに注意してください。",
+        "内部的な source 名や流入元ラベルではなく、見えている内容そのものを同列に扱ってください。",
         "",
         *build_summary_format_instructions(summary_format),
         "",
-        f"archive_directory: {archive_directory}",
-        "",
-        "## raw item counts",
+        "## item counts",
         "```json",
         json.dumps(raw_item_counts, ensure_ascii=False, indent=2),
         "```",
         "",
-        "## Primary grounding: raw/collected-items.json",
+        "## Primary grounding: normalized content snapshot",
         "```json",
         compact_raw_items.rstrip(),
         "```",
@@ -127,19 +127,13 @@ def build_codex_digest_prompt(
         "```",
     ]
 
-    for relative_path, markdown in _existing_summary_markdown(archive_directory):
-        lines.extend(
-            [
-                "",
-                f"## Supplemental context: {relative_path.as_posix()}",
-                "```markdown",
-                markdown.rstrip(),
-                "```",
-            ]
-        )
-
     lines.append("")
     return "\n".join(lines)
+
+
+def _stage_sanitized_codex_context(archive_directory: Path, codex_context: Path) -> None:
+    codex_context.mkdir(parents=True, exist_ok=True)
+
 
 
 def build_summary_format_instructions(summary_format: str) -> list[str]:
@@ -150,7 +144,7 @@ def build_summary_format_instructions(summary_format: str) -> list[str]:
             "リンクが必要な箇所は、該当する語句を Markdown リンク `[ラベル](URL)` として文中に埋め込んでください。",
             "URL を文末に列挙しないでください。裸の URL を単独で並べるのも避けてください。",
             "`▫ 主要トピック` は 3〜6 件の箇条書き、各項目は 1 行で要点→必要なら文中リンク。",
-            "`▫ 主要トピック` は可能な限り source diversity を確保し、同一 source ばかりで埋めず、Apple/Anthropic/xAI/X/ChatGPT/Grok のうち実際に item がある source を優先的に分散して拾ってください。",
+            "`▫ 主要トピック` は internal source 名に引きずられず、与えられた URL/title/本文断片を同列に見て重要度順に選んでください。",
             "`▫ 今日の予定・期限` は当日または近い日時の予定だけを書く。無ければ `- 目立った予定なし`。",
         ]
     raise ValueError(f"Unsupported summary format: {summary_format}")
@@ -174,12 +168,8 @@ def _compact_raw_items_for_prompt(raw_items: str) -> tuple[str, dict[str, int]]:
     compact_items: list[dict[str, object]] = []
     for item in items[:MAX_PROMPT_RAW_ITEMS]:
         timestamps = item.get("timestamps") or {}
-        provenance = item.get("provenance") or {}
         compact_items.append(
             {
-                "id": item.get("id"),
-                "source": item.get("source"),
-                "source_kind": item.get("source_kind"),
                 "title": _truncate_text(item.get("title")),
                 "excerpt": _truncate_text(item.get("excerpt"), max_length=280),
                 "body": _truncate_text(item.get("body"), max_length=280),
@@ -189,13 +179,6 @@ def _compact_raw_items_for_prompt(raw_items: str) -> tuple[str, dict[str, int]]:
                     "updated_at": timestamps.get("updated_at"),
                     "start_at": timestamps.get("start_at"),
                     "end_at": timestamps.get("end_at"),
-                },
-                "provenance": {
-                    "provider": provenance.get("provider"),
-                    "acquisition_mode": provenance.get("acquisition_mode"),
-                    "authority_tier": provenance.get("authority_tier"),
-                    "primary_source_url": provenance.get("primary_source_url"),
-                    "raw_record_id": provenance.get("raw_record_id"),
                 },
             }
         )
@@ -229,8 +212,6 @@ def _build_url_title_index(raw_items: str, *, title_fetcher=None) -> str:
             title = _truncate_text(fetcher(url)) or _fallback_title_for_url_item(item, url)
         indexed_items.append(
             {
-                "id": item.get("id"),
-                "source": item.get("source"),
                 "title": title,
                 "url": url,
             }
@@ -239,14 +220,9 @@ def _build_url_title_index(raw_items: str, *, title_fetcher=None) -> str:
 
 
 def _fallback_title_for_url_item(item: dict[str, object], url: str) -> str:
-    title = _truncate_text(item.get("excerpt")) or _truncate_text(item.get("body"))
-    if title:
-        return title
-    source = item.get("source")
-    item_id = item.get("id")
     parsed = urllib.parse.urlparse(url)
     path = parsed.path.rstrip("/") or "/"
-    return " / ".join(str(part) for part in (source, item_id, f"{parsed.netloc}{path}") if part)
+    return f"{parsed.netloc}{path}"
 
 
 class _TitleParser(HTMLParser):

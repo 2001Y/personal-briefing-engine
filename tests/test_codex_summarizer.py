@@ -13,7 +13,11 @@ class StubCodexInvocation:
         self.calls: list[dict[str, object]] = []
 
     def run(self, prompt: str, *, cwd: Path) -> str:
-        self.calls.append({"prompt": prompt, "cwd": cwd})
+        self.calls.append({
+            "prompt": prompt,
+            "cwd": cwd,
+            "raw_items_exists": (cwd / "raw" / "collected-items.json").exists(),
+        })
         return self.response
 
 
@@ -50,7 +54,8 @@ def test_codex_cli_summarizer_builds_grounded_prompt_and_writes_canonical_digest
     assert artifact.path.exists()
     assert artifact.path.read_text() == artifact.content
     assert len(invocation.calls) == 1
-    assert invocation.calls[0]["cwd"] == archive_directory
+    assert invocation.calls[0]["cwd"] != archive_directory
+    assert invocation.calls[0]["raw_items_exists"] is False
 
     prompt = invocation.calls[0]["prompt"]
     assert isinstance(prompt, str)
@@ -58,8 +63,12 @@ def test_codex_cli_summarizer_builds_grounded_prompt_and_writes_canonical_digest
     assert "一次情報" in prompt
     assert "リンク" in prompt
     assert "https://example.com/posts/launch-update" in prompt
-    assert '"official-blog:launch"' in prompt
-    assert "# Morning Digest" in prompt
+    assert '"title": "Launch update"' in prompt
+    assert '"official-blog:launch"' not in prompt
+    assert '"source"' not in prompt
+    assert "raw/collected-items.json" not in prompt
+    assert str(archive_directory) not in prompt
+    assert "# Morning Digest" not in prompt
 
 
 def test_codex_cli_summarizer_compacts_large_raw_items_before_prompting(tmp_path: Path) -> None:
