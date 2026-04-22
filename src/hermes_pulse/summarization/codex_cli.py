@@ -1,6 +1,10 @@
 import json
 import subprocess
 import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+from html.parser import HTMLParser
 from pathlib import Path
 
 DEFAULT_CODEX_TIMEOUT_SECONDS = 900
@@ -89,8 +93,10 @@ def build_codex_digest_prompt(
     raw_items: str,
     *,
     summary_format: str = DEFAULT_SUMMARY_FORMAT,
+    title_fetcher=None,
 ) -> str:
     compact_raw_items, raw_item_counts = _compact_raw_items_for_prompt(raw_items)
+    url_title_index = _build_url_title_index(raw_items, title_fetcher=title_fetcher)
     lines = [
         "あなたは Hermes Pulse の要約担当です。",
         "以下の archive directory から canonical digest を作成してください。",
@@ -113,6 +119,11 @@ def build_codex_digest_prompt(
         "## Primary grounding: raw/collected-items.json",
         "```json",
         compact_raw_items.rstrip(),
+        "```",
+        "",
+        "## URL/title index for all URL-bearing items",
+        "```json",
+        url_title_index.rstrip(),
         "```",
     ]
 
@@ -203,3 +214,76 @@ def _truncate_text(value: object, *, max_length: int = 160) -> str | None:
     if len(text) <= max_length:
         return text
     return f"{text[: max_length - 1]}…"
+
+
+def _build_url_title_index(raw_items: str, *, title_fetcher=None) -> str:
+    items = json.loads(raw_items)
+    fetcher = title_fetcher or _fetch_title_from_url
+    indexed_items: list[dict[str, object]] = []
+    for item in items:
+        url = item.get("url")
+        if not isinstance(url, str) or not url:
+            continue
+        title = _truncate_text(item.get("title"))
+        if title is None:
+            title = _truncate_text(fetcher(url)) or _fallback_title_for_url_item(item, url)
+        indexed_items.append(
+            {
+                "id": item.get("id"),
+                "source": item.get("source"),
+                "title": title,
+                "url": url,
+            }
+        )
+    return json.dumps(indexed_items, ensure_ascii=False, indent=2) + "\n"
+
+
+def _fallback_title_for_url_item(item: dict[str, object], url: str) -> str:
+    title = _truncate_text(item.get("excerpt")) or _truncate_text(item.get("body"))
+    if title:
+        return title
+    source = item.get("source")
+    item_id = item.get("id")
+    parsed = urllib.parse.urlparse(url)
+    path = parsed.path.rstrip("/") or "/"
+    return " / ".join(str(part) for part in (source, item_id, f"{parsed.netloc}{path}") if part)
+
+
+class _TitleParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._in_title = False
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() == "title":
+            self._in_title = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() == "title":
+            self._in_title = False
+
+    def handle_data(self, data: str) -> None:
+        if self._in_title:
+            self.parts.append(data)
+
+
+def _fetch_title_from_url(url: str) -> str | None:
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "HermesPulse/1.0 (+https://github.com/2001Y/hermes-pulse)"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            content_type = response.headers.get("Content-Type", "")
+            if "html" not in content_type:
+                return None
+            charset = response.headers.get_content_charset() or "utf-8"
+            body = response.read(65536).decode(charset, errors="replace")
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return None
+
+    parser = _TitleParser()
+    parser.feed(body)
+    title = " ".join("".join(parser.parts).split())
+    return title or None
