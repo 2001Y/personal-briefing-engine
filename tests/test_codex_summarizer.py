@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from hermes_pulse.summarization.base import SummaryArtifact
-from hermes_pulse.summarization.codex_cli import CodexCliSummarizer
+from hermes_pulse.summarization.codex_cli import CodexCliSummarizer, _chunk_items
 
 
 class StubCodexInvocation:
@@ -188,11 +188,19 @@ def test_codex_cli_summarizer_uses_smaller_chunk_size_for_large_archives(tmp_pat
     assert artifact.partial_contents == ["response-1", "response-2", "response-3"]
     assert artifact.content == "response-4"
     assert len(invocation.calls) == 4
-    assert '"title": "Title 49"' in invocation.calls[0]["prompt"]
-    assert '"title": "Title 50"' not in invocation.calls[0]["prompt"]
-    assert '"title": "Title 50"' in invocation.calls[1]["prompt"]
-    assert '"title": "Title 99"' in invocation.calls[1]["prompt"]
-    assert '"title": "Title 100"' not in invocation.calls[1]["prompt"]
+    assert '"title": "Title 39"' in invocation.calls[0]["prompt"]
+    assert '"title": "Title 40"' not in invocation.calls[0]["prompt"]
+    assert '"title": "Title 40"' in invocation.calls[1]["prompt"]
+    assert '"title": "Title 79"' in invocation.calls[1]["prompt"]
+    assert '"title": "Title 80"' not in invocation.calls[1]["prompt"]
+
+
+def test_chunk_items_balances_tail_for_evenly_sized_items() -> None:
+    items = [{"id": f"item-{index}", "title": f"Title {index}", "excerpt": "x" * 20, "body": None, "url": f"https://example.com/{index}"} for index in range(101)]
+
+    chunks = _chunk_items(items, 50)
+
+    assert [len(chunk) for chunk in chunks] == [34, 34, 33]
 
 
 def test_codex_cli_summarizer_requires_raw_collected_items_json(tmp_path: Path) -> None:

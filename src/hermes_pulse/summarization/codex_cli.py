@@ -160,7 +160,9 @@ def build_codex_merge_prompt(chunk_summaries: list[str], *, summary_format: str 
     lines = [
         "あなたは Hermes Pulse の最終編集担当です。",
         "以下は複数 chunk から作った部分要約です。重要事項を重複なく統合し、最終版だけを返してください。",
-        "情報量を落としすぎず、同一テーマの重複 bullet は統合してください。",
+        "出力は briefing-v1 を維持しつつ、内容はほぼそのまま維持してください。",
+        "明らかに関連する項目だけを軽く統合し、項目数を不必要に減らさないでください。",
+        "情報量を落としすぎず、同一テーマの重複 bullet は最小限だけ統合してください。",
         "",
         *build_summary_format_instructions(summary_format),
         "",
@@ -197,7 +199,40 @@ def build_summary_format_instructions(summary_format: str) -> list[str]:
 def _chunk_items(items: list[dict[str, object]], chunk_size: int) -> list[list[dict[str, object]]]:
     if not items:
         return [[]]
-    return [items[index : index + chunk_size] for index in range(0, len(items), chunk_size)]
+    chunk_count = max(1, (len(items) + chunk_size - 1) // chunk_size)
+    token_weights = [_estimate_item_tokens(item) for item in items]
+    total_tokens = sum(token_weights)
+    target_tokens_per_chunk = total_tokens / chunk_count
+    chunks: list[list[dict[str, object]]] = []
+    current_chunk: list[dict[str, object]] = []
+    current_tokens = 0
+    for index, item in enumerate(items):
+        current_chunk.append(item)
+        current_tokens += token_weights[index]
+        remaining_items = len(items) - index - 1
+        remaining_chunks = chunk_count - len(chunks) - 1
+        should_split = (
+            remaining_chunks > 0
+            and current_tokens >= target_tokens_per_chunk
+            and remaining_items >= remaining_chunks
+        )
+        if should_split:
+            chunks.append(current_chunk)
+            current_chunk = []
+            current_tokens = 0
+    if current_chunk:
+        chunks.append(current_chunk)
+    return chunks
+
+
+def _estimate_item_tokens(item: dict[str, object]) -> int:
+    text_parts: list[str] = []
+    for field_name in ("title", "excerpt", "body", "url"):
+        value = item.get(field_name)
+        if isinstance(value, str):
+            text_parts.append(value)
+    estimated = max(1, len(" ".join(text_parts)) // 24)
+    return estimated
 
 
 def _compact_raw_items_for_prompt(raw_items: str, *, title_fetcher=None, title_synthesizer=None) -> tuple[str, dict[str, int]]:

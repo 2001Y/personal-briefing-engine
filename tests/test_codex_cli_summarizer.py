@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from hermes_pulse.summarization.codex_cli import build_codex_digest_prompt, build_summary_format_instructions
+from hermes_pulse.summarization.codex_cli import build_codex_digest_prompt, build_codex_merge_prompt, build_summary_format_instructions
 
 
 def test_build_codex_digest_prompt_limits_embedded_raw_items_and_reports_omissions(tmp_path: Path) -> None:
@@ -301,3 +301,15 @@ def test_build_codex_digest_prompt_groups_related_titles_near_each_other(tmp_pat
     assert first < second
     assert not (first < apple < second)
     assert not (first < boj < second)
+
+
+def test_build_codex_merge_prompt_requests_light_compression_only() -> None:
+    prompt = build_codex_merge_prompt([
+        "☀ *Hermes Pulse Morning Briefing*\n\n▫ 主要トピック\n- A\n- B\n\n▫ 今日の予定・期限\n- なし",
+        "☀ *Hermes Pulse Morning Briefing*\n\n▫ 主要トピック\n- C\n- D\n\n▫ 今日の予定・期限\n- なし",
+    ])
+
+    assert "最終版だけを返してください" in prompt
+    assert "ほぼそのまま維持" in prompt
+    assert "明らかに関連する項目だけを軽く統合" in prompt
+    assert "項目数を不必要に減らさない" in prompt
