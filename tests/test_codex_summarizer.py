@@ -110,6 +110,90 @@ def test_codex_cli_summarizer_compacts_large_raw_items_before_prompting(tmp_path
     assert huge_excerpt not in prompt
 
 
+def test_codex_cli_summarizer_splits_large_archives_into_chunk_prompts_and_merges_results(tmp_path: Path) -> None:
+    archive_directory = tmp_path / "2026-04-20"
+    raw_directory = archive_directory / "raw"
+    raw_directory.mkdir(parents=True)
+
+    raw_items = [
+        {
+            "id": f"item-{index}",
+            "source": "official-blog",
+            "source_kind": "feed_item",
+            "title": f"Title {index}",
+            "excerpt": f"Excerpt {index}",
+            "url": f"https://example.com/{index}",
+        }
+        for index in range(250)
+    ]
+    (raw_directory / "collected-items.json").write_text(json.dumps(raw_items, indent=2) + "\n")
+
+    class MultiResponseInvocation:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def run(self, prompt: str, *, cwd: Path) -> str:
+            self.calls.append({"prompt": prompt, "cwd": cwd})
+            if len(self.calls) == 1:
+                return "chunk-one"
+            if len(self.calls) == 2:
+                return "chunk-two"
+            return "merged-final"
+
+    invocation = MultiResponseInvocation()
+    summarizer = CodexCliSummarizer(invocation=invocation)
+
+    artifact = summarizer.summarize_archive(archive_directory)
+
+    assert artifact.content == "merged-final"
+    assert len(invocation.calls) == 6
+    assert "chunk-one" in invocation.calls[5]["prompt"]
+    assert "chunk-two" in invocation.calls[5]["prompt"]
+    assert '"title": "Title 49"' in invocation.calls[0]["prompt"]
+    assert '"title": "Title 50"' not in invocation.calls[0]["prompt"]
+    assert '"title": "Title 249"' not in invocation.calls[0]["prompt"]
+
+
+def test_codex_cli_summarizer_uses_smaller_chunk_size_for_large_archives(tmp_path: Path) -> None:
+    archive_directory = tmp_path / "2026-04-20"
+    raw_directory = archive_directory / "raw"
+    raw_directory.mkdir(parents=True)
+
+    raw_items = [
+        {
+            "id": f"item-{index}",
+            "source": "official-blog",
+            "source_kind": "feed_item",
+            "title": f"Title {index}",
+            "excerpt": f"Excerpt {index}",
+            "url": f"https://example.com/{index}",
+        }
+        for index in range(120)
+    ]
+    (raw_directory / "collected-items.json").write_text(json.dumps(raw_items, indent=2) + "\n")
+
+    class MultiResponseInvocation:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def run(self, prompt: str, *, cwd: Path) -> str:
+            self.calls.append({"prompt": prompt, "cwd": cwd})
+            return f"response-{len(self.calls)}"
+
+    invocation = MultiResponseInvocation()
+    summarizer = CodexCliSummarizer(invocation=invocation)
+
+    artifact = summarizer.summarize_archive(archive_directory)
+
+    assert artifact.partial_contents == ["response-1", "response-2", "response-3"]
+    assert artifact.content == "response-4"
+    assert len(invocation.calls) == 4
+    assert '"title": "Title 49"' in invocation.calls[0]["prompt"]
+    assert '"title": "Title 50"' not in invocation.calls[0]["prompt"]
+    assert '"title": "Title 50"' in invocation.calls[1]["prompt"]
+    assert '"title": "Title 99"' in invocation.calls[1]["prompt"]
+    assert '"title": "Title 100"' not in invocation.calls[1]["prompt"]
+
 
 def test_codex_cli_summarizer_requires_raw_collected_items_json(tmp_path: Path) -> None:
     archive_directory = tmp_path / "2026-04-20"

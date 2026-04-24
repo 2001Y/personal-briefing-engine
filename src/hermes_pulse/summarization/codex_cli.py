@@ -1,7 +1,9 @@
 import json
+import re
 import subprocess
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from hermes_pulse.summarization.base import (
     CODEX_DIGEST_RELATIVE_PATH,
@@ -14,7 +16,7 @@ from hermes_pulse.title_resolution import fetch_title_from_url, synthesize_title
 DEFAULT_CODEX_TIMEOUT_SECONDS = 900
 DEFAULT_CODEX_MODEL = "gpt-5.4"
 DEFAULT_SUMMARY_FORMAT = "briefing-v1"
-MAX_PROMPT_RAW_ITEMS = 200
+MAX_PROMPT_RAW_ITEMS = 50
 
 
 class CodexCliSummarizer:
@@ -122,8 +124,9 @@ def build_codex_digest_prompt(
     chunk_index: int = 1,
     chunk_total: int = 1,
 ) -> str:
+    prepared_raw_items = json.dumps(_prepare_items_for_prompt(json.loads(raw_items)), ensure_ascii=False)
     compact_raw_items, raw_item_counts = _compact_raw_items_for_prompt(
-        raw_items,
+        prepared_raw_items,
         title_fetcher=title_fetcher,
         title_synthesizer=title_synthesizer,
     )
@@ -224,6 +227,84 @@ def _compact_raw_items_for_prompt(raw_items: str, *, title_fetcher=None, title_s
         "omitted_from_prompt": max(len(items) - len(compact_items), 0),
     }
     return json.dumps(compact_items, ensure_ascii=False, indent=2) + "\n", raw_item_counts
+
+
+def _prepare_items_for_prompt(items: list[dict[str, object]]) -> list[dict[str, object]]:
+    deduped_items = _dedupe_items_by_url(items)
+    return _order_items_for_prompt(deduped_items)
+
+
+def _dedupe_items_by_url(items: list[dict[str, object]]) -> list[dict[str, object]]:
+    deduped_by_url: dict[str, dict[str, object]] = {}
+    passthrough: list[dict[str, object]] = []
+    for item in items:
+        url = item.get("url")
+        if not isinstance(url, str) or not url:
+            passthrough.append(item)
+            continue
+        existing = deduped_by_url.get(url)
+        if existing is None or _item_text_weight(item) > _item_text_weight(existing):
+            deduped_by_url[url] = item
+    return passthrough + list(deduped_by_url.values())
+
+
+def _order_items_for_prompt(items: list[dict[str, object]]) -> list[dict[str, object]]:
+    if len(items) <= 1:
+        return items
+    indexed_items = list(enumerate(items))
+    clusters: list[dict[str, object]] = []
+    for index, item in indexed_items:
+        signature = _item_signature(item)
+        placed = False
+        for cluster in clusters:
+            cluster_signature = cluster["signature"]
+            if isinstance(cluster_signature, set) and len(signature & cluster_signature) >= 1:
+                cluster_items = cluster["items"]
+                if isinstance(cluster_items, list):
+                    cluster_items.append((index, item))
+                cluster_signature.update(signature)
+                placed = True
+                break
+        if not placed:
+            clusters.append({"signature": set(signature), "items": [(index, item)]})
+    ordered: list[dict[str, object]] = []
+    for cluster in clusters:
+        cluster_items = cluster["items"]
+        if isinstance(cluster_items, list):
+            cluster_items.sort(key=lambda value: value[0])
+            ordered.extend(item for _, item in cluster_items)
+    return ordered
+
+
+def _item_signature(item: dict[str, object]) -> set[str]:
+    tokens: set[str] = set()
+    stopwords = {"item", "items", "update", "updates", "note", "notes", "news", "launch", "launches", "ships", "ship", "first", "second", "third"}
+    url = item.get("url")
+    if isinstance(url, str) and url:
+        parsed = urlparse(url)
+        host = parsed.netloc.lower()
+        if host and host != "example.com":
+            tokens.add(f"host:{host}")
+        for token in re.findall(r"[A-Za-z0-9]{3,}", parsed.path.lower()):
+            if not token.isdigit() and token not in stopwords:
+                tokens.add(f"path:{token}")
+    for field_name in ("title", "excerpt", "body"):
+        value = item.get(field_name)
+        if not isinstance(value, str):
+            continue
+        for token in re.findall(r"[A-Za-z0-9]{3,}", value.lower()):
+            if not token.isdigit() and token not in stopwords:
+                tokens.add(token)
+    return tokens
+
+
+def _item_text_weight(item: dict[str, object]) -> int:
+    score = 0
+    for field_name in ("title", "excerpt", "body"):
+        value = item.get(field_name)
+        if isinstance(value, str):
+            score += len(value)
+    return score
 
 
 def _resolve_item_title(item: dict[str, object], *, fetcher, synthesizer) -> str | None:

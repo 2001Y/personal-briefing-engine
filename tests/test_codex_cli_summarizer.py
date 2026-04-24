@@ -41,8 +41,8 @@ def test_build_codex_digest_prompt_limits_embedded_raw_items_and_reports_omissio
     assert '"title": "Title 0"' in prompt
     assert '"title": "Title 249"' not in prompt
     assert "## item counts" in prompt
-    assert '"included_in_prompt": 200' in prompt
-    assert '"omitted_from_prompt": 50' in prompt
+    assert '"included_in_prompt": 50' in prompt
+    assert '"omitted_from_prompt": 200' in prompt
 
 
 def test_build_summary_format_instructions_requires_inline_markdown_links_in_briefing_v1() -> None:
@@ -81,8 +81,8 @@ def test_build_codex_digest_prompt_embeds_fetched_titles_inline_without_separate
     assert "## URL/title index for all URL-bearing items" not in prompt
     assert '"url": "https://example.com/0"' in prompt
     assert '"title": "Title 0"' in prompt
-    assert '"url": "https://example.com/199"' in prompt
-    assert '"title": "Title 199"' in prompt
+    assert '"url": "https://example.com/49"' in prompt
+    assert '"title": "Title 49"' in prompt
 
 
 def test_build_codex_digest_prompt_omits_internal_source_labels_from_llm_grounding(tmp_path: Path) -> None:
@@ -218,3 +218,86 @@ def test_build_codex_digest_prompt_uses_neutral_fallback_title_for_untitled_urls
     assert '"title": "example.com/no-title"' in prompt
     assert "x_home_timeline_reverse_chronological" not in prompt
     assert "internal:42" not in prompt
+
+
+def test_build_codex_digest_prompt_prefers_longer_record_when_urls_match(tmp_path: Path) -> None:
+    archive_directory = tmp_path / "archive"
+    raw_directory = archive_directory / "raw"
+    raw_directory.mkdir(parents=True)
+    raw_items = json.dumps(
+        [
+            {
+                "id": "x-home:short",
+                "source": "x_home_timeline_reverse_chronological",
+                "source_kind": "social_post",
+                "title": "Short title",
+                "excerpt": "short excerpt",
+                "body": None,
+                "url": "https://example.com/shared",
+            },
+            {
+                "id": "openai-news:long",
+                "source": "openai-newsroom",
+                "source_kind": "document",
+                "title": "Long title wins",
+                "excerpt": "longer excerpt with more detail",
+                "body": "This is the much longer canonical body for the same URL and should survive dedupe.",
+                "url": "https://example.com/shared",
+            },
+        ],
+        ensure_ascii=False,
+    )
+    (raw_directory / "collected-items.json").write_text(raw_items)
+
+    prompt = build_codex_digest_prompt(archive_directory, raw_items)
+
+    assert prompt.count('"url": "https://example.com/shared"') == 1
+    assert '"title": "Long title wins"' in prompt
+    assert "much longer canonical body" in prompt
+    assert '"title": "Short title"' not in prompt
+
+
+def test_build_codex_digest_prompt_groups_related_titles_near_each_other(tmp_path: Path) -> None:
+    archive_directory = tmp_path / "archive"
+    raw_directory = archive_directory / "raw"
+    raw_directory.mkdir(parents=True)
+    raw_items = json.dumps(
+        [
+            {
+                "id": "misc-1",
+                "title": "Apple supply chain note",
+                "excerpt": "Unrelated Apple item",
+                "url": "https://example.com/apple",
+            },
+            {
+                "id": "openai-1",
+                "title": "OpenAI launches Responses API update",
+                "excerpt": "first OpenAI item",
+                "url": "https://openai.com/blog/responses-api-update",
+            },
+            {
+                "id": "misc-2",
+                "title": "Bank of Japan outlook",
+                "excerpt": "Unrelated finance item",
+                "url": "https://example.com/boj",
+            },
+            {
+                "id": "openai-2",
+                "title": "OpenAI ships GPT-5 Responses improvements",
+                "excerpt": "second OpenAI item",
+                "url": "https://openai.com/blog/gpt-5-responses-improvements",
+            },
+        ],
+        ensure_ascii=False,
+    )
+    (raw_directory / "collected-items.json").write_text(raw_items)
+
+    prompt = build_codex_digest_prompt(archive_directory, raw_items)
+
+    first = prompt.index('"title": "OpenAI launches Responses API update"')
+    second = prompt.index('"title": "OpenAI ships GPT-5 Responses improvements"')
+    apple = prompt.index('"title": "Apple supply chain note"')
+    boj = prompt.index('"title": "Bank of Japan outlook"')
+    assert first < second
+    assert not (first < apple < second)
+    assert not (first < boj < second)
