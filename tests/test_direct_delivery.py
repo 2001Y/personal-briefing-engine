@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 
 import hermes_pulse.direct_delivery as direct_delivery
+from hermes_pulse.archive import write_morning_digest_archive
+from hermes_pulse.models import CollectedItem, ItemTimestamps, Provenance
 from hermes_pulse.summarization.base import SummaryArtifact
 
 
@@ -24,6 +26,25 @@ EXPECTED_PRIMARY_HEADING = "▫ 主要トピック"
 EXPECTED_SCHEDULE_HEADING = "▫ 今日の予定・期限"
 
 
+def _archived_item(source: str, item_id: str, title: str, url: str) -> CollectedItem:
+    return CollectedItem(
+        id=f"{source}:{item_id}",
+        source=source,
+        source_kind="document",
+        title=title,
+        excerpt=f"Excerpt for {title}",
+        url=url,
+        timestamps=ItemTimestamps(created_at="2026-04-21T08:00:00Z", updated_at="2026-04-21T08:00:00Z"),
+        provenance=Provenance(
+            provider="example.com",
+            acquisition_mode="rss_poll",
+            authority_tier="primary",
+            primary_source_url=url,
+            raw_record_id=item_id,
+        ),
+    )
+
+
 def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path: Path) -> None:
     archive_directory = tmp_path / date.today().isoformat()
     digest_path = archive_directory / "summary" / "codex-digest.md"
@@ -38,6 +59,7 @@ def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path:
         *,
         unfurl_links: bool = False,
         unfurl_media: bool = False,
+        blocks: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         calls.append(
             {
@@ -46,6 +68,7 @@ def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path:
                 "thread_ts": thread_ts,
                 "unfurl_links": unfurl_links,
                 "unfurl_media": unfurl_media,
+                "blocks": blocks,
             }
         )
         return {"ok": True, "channel": channel, "ts": "1712345.6789"}
@@ -64,6 +87,17 @@ def test_post_canonical_digest_to_slack_reads_exact_canonical_artifact(tmp_path:
             "thread_ts": "1712345.6789",
             "unfurl_links": False,
             "unfurl_media": False,
+            "blocks": [
+                {
+                    "type": "rich_text",
+                    "elements": [
+                        {"type": "rich_text_section", "elements": [{"type": "text", "text": "# Codex Digest"}]},
+                        {"type": "rich_text_list", "style": "bullet", "elements": [
+                            {"type": "rich_text_section", "elements": [{"type": "text", "text": "Exact canonical content"}]}
+                        ]},
+                    ],
+                }
+            ],
         }
     ]
     assert result.archive_directory == archive_directory
@@ -117,11 +151,33 @@ def test_post_canonical_digest_to_slack_prepends_grok_fallback_notice_when_histo
     assert result.content == digest_path.read_text()
 
 
-def test_post_canonical_digest_to_slack_converts_markdown_links_to_slack_links(tmp_path: Path) -> None:
+def test_post_canonical_digest_to_slack_prepends_source_error_notice_when_metadata_exists(tmp_path: Path) -> None:
+    archive_directory = tmp_path / date.today().isoformat()
+    digest_path = archive_directory / "summary" / "codex-digest.md"
+    metadata_path = archive_directory / "metadata" / "source-errors.json"
+    digest_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    digest_path.write_text("☀ *Hermes Pulse Morning Briefing*\n\n▫ 主要トピック\n- test\n")
+    metadata_path.write_text(json.dumps({"x_signals": "401 Unauthorized"}, ensure_ascii=False) + "\n")
+    calls: list[str] = []
+
+    result = direct_delivery.post_canonical_digest_to_slack(
+        archive_directory,
+        channel="C123",
+        post_message=lambda text, *_args, **_kwargs: calls.append(text) or {"ok": True, "channel": "C123", "ts": "1"},
+    )
+
+    assert calls == [
+        "⚠ 一部ソース取得に失敗:\n- x_signals: 401 Unauthorized\n\n☀ *Hermes Pulse Morning Briefing*\n\n▫ 主要トピック\n- test\n"
+    ]
+    assert result.content == digest_path.read_text()
+
+
+def test_post_canonical_digest_to_slack_converts_markdown_links_and_bullets_to_slack_friendly_text(tmp_path: Path) -> None:
     archive_directory = tmp_path / date.today().isoformat()
     digest_path = archive_directory / "summary" / "codex-digest.md"
     digest_path.parent.mkdir(parents=True, exist_ok=True)
-    digest_path.write_text("# Codex Digest\n\n- [Launch update](https://example.com/posts/launch-update)\n")
+    digest_path.write_text("# Codex Digest\n\n- [Launch update](https://example.com/posts/launch-update)\n- Second item\n")
     calls: list[dict[str, object]] = []
 
     def fake_post_message(
@@ -131,6 +187,7 @@ def test_post_canonical_digest_to_slack_converts_markdown_links_to_slack_links(t
         *,
         unfurl_links: bool = False,
         unfurl_media: bool = False,
+        blocks: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         calls.append(
             {
@@ -139,6 +196,7 @@ def test_post_canonical_digest_to_slack_converts_markdown_links_to_slack_links(t
                 "thread_ts": thread_ts,
                 "unfurl_links": unfurl_links,
                 "unfurl_media": unfurl_media,
+                "blocks": blocks,
             }
         )
         return {"ok": True, "channel": channel, "ts": "1712345.6789"}
@@ -151,11 +209,23 @@ def test_post_canonical_digest_to_slack_converts_markdown_links_to_slack_links(t
 
     assert calls == [
         {
-            "text": "# Codex Digest\n\n- <https://example.com/posts/launch-update|Launch update>\n",
+            "text": "# Codex Digest\n\n- <https://example.com/posts/launch-update|Launch update>\n- Second item\n",
             "channel": "C123",
             "thread_ts": None,
             "unfurl_links": False,
             "unfurl_media": False,
+            "blocks": [
+                {
+                    "type": "rich_text",
+                    "elements": [
+                        {"type": "rich_text_section", "elements": [{"type": "text", "text": "# Codex Digest"}]},
+                        {"type": "rich_text_list", "style": "bullet", "elements": [
+                            {"type": "rich_text_section", "elements": [{"type": "link", "url": "https://example.com/posts/launch-update", "text": "Launch update"}]},
+                            {"type": "rich_text_section", "elements": [{"type": "text", "text": "Second item"}]},
+                        ]},
+                    ],
+                }
+            ],
         }
     ]
     assert result.content == digest_path.read_text()
@@ -182,6 +252,7 @@ def test_post_canonical_digest_to_slack_splits_oversized_digest_into_threaded_po
         *,
         unfurl_links: bool = False,
         unfurl_media: bool = False,
+        blocks: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         calls.append(
             {
@@ -190,6 +261,7 @@ def test_post_canonical_digest_to_slack_splits_oversized_digest_into_threaded_po
                 "thread_ts": thread_ts,
                 "unfurl_links": unfurl_links,
                 "unfurl_media": unfurl_media,
+                "blocks": blocks,
             }
         )
         return {"ok": True, "channel": channel, "ts": f"1712345.67{len(calls)}"}
@@ -216,6 +288,68 @@ def test_post_canonical_digest_to_slack_splits_oversized_digest_into_threaded_po
 
 def test_build_parser_uses_hermes_pulse_direct_delivery_program_name() -> None:
     assert direct_delivery.build_parser().prog == "hermes-pulse-direct-delivery"
+
+
+def test_run_morning_digest_direct_delivery_can_post_a_week_window_from_source_ledgers(
+    monkeypatch, tmp_path: Path
+) -> None:
+    archive_root = tmp_path / "pulse-archive"
+    write_morning_digest_archive(
+        items=[_archived_item("weekly-source", "carryover", "Weekly carryover", "https://example.com/weekly-carryover")],
+        archive_root=archive_root,
+        archive_date="2026-04-21",
+        retrieved_at="2026-04-21T08:00:00Z",
+    )
+
+    def fake_summarize(archive_directory: Path, **_kwargs) -> SummaryArtifact:
+        raw_items = json.loads((archive_directory / "raw" / "collected-items.json").read_text())
+        content = "# Codex Digest\n\n" + "".join(f"- {item['title']}\n" for item in raw_items)
+        digest_path = archive_directory / "summary" / "codex-digest.md"
+        digest_path.parent.mkdir(parents=True, exist_ok=True)
+        digest_path.write_text(content)
+        return SummaryArtifact(path=digest_path, content=content)
+
+    monkeypatch.setattr(direct_delivery, "_summarize_archive_with_retries", fake_summarize)
+
+    calls: list[dict[str, object]] = []
+    args = direct_delivery.build_parser().parse_args(
+        [
+            "--source-registry",
+            str(SOURCE_REGISTRY_PATH),
+            "--feed-fixture",
+            str(FEED_FIXTURE_PATH),
+            "--search-fixture",
+            str(SEARCH_FIXTURE_PATH),
+            "--hermes-history",
+            str(HERMES_HISTORY_PATH),
+            "--notes",
+            str(NOTES_PATH),
+            "--archive-root",
+            str(archive_root),
+            "--archive-label",
+            "2026-week-17",
+            "--window-start",
+            "2026-04-21",
+            "--window-end",
+            "2026-04-24",
+            "--now",
+            "2026-04-23T08:00:00Z",
+            "--channel",
+            "C123",
+        ]
+    )
+
+    result = direct_delivery.run_morning_digest_direct_delivery(
+        args,
+        post_message=lambda text, channel, thread_ts=None, **kwargs: calls.append(
+            {"text": text, "channel": channel, "thread_ts": thread_ts, "blocks": kwargs.get("blocks")}
+        )
+        or {"ok": True, "channel": channel, "ts": "1712345.6789"},
+    )
+
+    assert result.archive_directory.name == "2026-week-17"
+    assert "Weekly carryover" in calls[0]["text"]
+    assert "Launch update" in calls[0]["text"]
 
 
 def test_post_canonical_digest_to_slack_fails_clearly_when_canonical_artifact_is_missing(
@@ -263,6 +397,7 @@ def test_main_runs_morning_digest_pipeline_and_posts_exact_canonical_digest(
         *,
         unfurl_links: bool = False,
         unfurl_media: bool = False,
+        blocks: list[dict[str, object]] | None = None,
     ) -> dict[str, object]:
         slack_calls.append(
             {
@@ -271,6 +406,7 @@ def test_main_runs_morning_digest_pipeline_and_posts_exact_canonical_digest(
                 "thread_ts": thread_ts,
                 "unfurl_links": unfurl_links,
                 "unfurl_media": unfurl_media,
+                "blocks": blocks,
             }
         )
         return {"ok": True, "channel": channel, "ts": "1712345.6789"}
@@ -312,6 +448,17 @@ def test_main_runs_morning_digest_pipeline_and_posts_exact_canonical_digest(
             "thread_ts": "1712345.6789",
             "unfurl_links": False,
             "unfurl_media": False,
+            "blocks": [
+                {
+                    "type": "rich_text",
+                    "elements": [
+                        {"type": "rich_text_section", "elements": [{"type": "text", "text": "# Codex Digest"}]},
+                        {"type": "rich_text_list", "style": "bullet", "elements": [
+                            {"type": "rich_text_section", "elements": [{"type": "text", "text": "Canonical archive summary"}]}
+                        ]},
+                    ],
+                }
+            ],
         }
     ]
 

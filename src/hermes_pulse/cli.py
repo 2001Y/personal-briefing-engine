@@ -7,7 +7,11 @@ from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-from hermes_pulse.archive import write_morning_digest_archive
+from hermes_pulse.archive import (
+    load_items_from_source_ledgers,
+    write_archive_raw_items,
+    write_morning_digest_archive,
+)
 from hermes_pulse.collection import collect_for_trigger
 from hermes_pulse.connectors.audit_context import AuditContextConnector, load_audit_context_fixture
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
@@ -60,6 +64,7 @@ from hermes_pulse.rendering import (
 from hermes_pulse.source_registry import load_source_registry
 from hermes_pulse.summarization import CodexCliSummarizer
 from hermes_pulse.trigger_registry import get_trigger_profile
+from hermes_pulse.x_oauth2 import DEFAULT_SHARED_ENV_PATH, refresh_x_oauth2_token
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -103,6 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
             "refresh-grok-history-fallback",
             "refresh-chatgpt-history",
             "prepare-chatgpt-history",
+            "refresh-x-oauth2",
             "state-summary",
         ),
     )
@@ -118,12 +124,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--hermes-history", type=Path)
     parser.add_argument("--notes", type=Path)
     parser.add_argument("--archive-root", type=Path)
+    parser.add_argument("--archive-label")
+    parser.add_argument("--window-start")
+    parser.add_argument("--window-end")
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--input-dir", type=Path)
     parser.add_argument("--input-file", type=Path)
     parser.add_argument("--history-db", type=Path)
     parser.add_argument("--cdp-port", type=int, default=9223)
     parser.add_argument("--page-size", type=int, default=100)
+    parser.add_argument("--shared-env-path", type=Path, default=DEFAULT_SHARED_ENV_PATH)
+    parser.add_argument("--xurl-app-name", default="default")
+    parser.add_argument("--min-valid-seconds", type=int, default=300)
+    parser.add_argument("--allow-interactive-reauth", action="store_true")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--state-db", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--action-id")
@@ -193,6 +207,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("prepare-chatgpt-history requires --input-file and --output-dir")
         ChatGPTExportPreparer().prepare(args.input_file, args.output_dir)
         return 0
+    if args.command == "refresh-x-oauth2":
+        refresh_x_oauth2_token(
+            shared_env_path=args.shared_env_path,
+            xurl_app_name=args.xurl_app_name,
+            min_valid_seconds=args.min_valid_seconds,
+            force=args.force,
+            allow_interactive_reauth=args.allow_interactive_reauth,
+        )
+        return 0
     if args.command == "state-summary":
         if args.state_db is None:
             raise ValueError("state-summary requires --state-db")
@@ -260,7 +283,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             archive_directory = write_morning_digest_archive(
                 items=deliverable_items,
                 archive_root=archive_root,
-                archive_date=date.today().isoformat(),
+                archive_date=_archive_label_for_args(args),
+                retrieved_at=occurred_at,
+            )
+            _apply_replay_window_if_requested(
+                archive_directory,
+                archive_root=archive_root,
+                args=args,
             )
             markdown = CodexCliSummarizer().summarize_archive(archive_directory).content
         elif args.command == "leave-now-warning":
@@ -437,6 +466,29 @@ def _occurred_at_for_command(command: str | None, args: argparse.Namespace) -> s
     if args.now:
         return args.now
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _archive_label_for_args(args: argparse.Namespace) -> str:
+    return getattr(args, "archive_label", None) or date.today().isoformat()
+
+
+def _apply_replay_window_if_requested(
+    archive_directory: Path,
+    *,
+    archive_root: Path,
+    args: argparse.Namespace,
+) -> list[CollectedItem] | None:
+    window_start = getattr(args, "window_start", None)
+    window_end = getattr(args, "window_end", None)
+    if window_start is None and window_end is None:
+        return None
+    replay_items = load_items_from_source_ledgers(
+        archive_root,
+        window_start=window_start,
+        window_end=window_end,
+    )
+    write_archive_raw_items(archive_directory, replay_items)
+    return replay_items
 
 
 def _parse_x_signal_types(value: str | None) -> list[str]:

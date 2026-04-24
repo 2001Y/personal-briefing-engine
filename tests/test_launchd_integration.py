@@ -48,6 +48,8 @@ def test_render_direct_delivery_wrapper_targets_module_with_channel_thread_and_a
     assert 'X_OAUTH2_EXPIRATION_TIME' in wrapper
     assert 'oauth2_tokens' in wrapper
     assert 'default_user' in wrapper
+    assert 'if ! /opt/homebrew/bin/python3 -m hermes_pulse.cli refresh-x-oauth2 --shared-env-path /Users/akitani/.config/env/shared.env --xurl-app-name default --min-valid-seconds 900; then' in wrapper
+    assert 'echo "warning: X OAuth2 refresh failed; digest will continue without X signals" >&2' in wrapper
     assert 'if ! /opt/homebrew/bin/python3 -m hermes_pulse.cli refresh-chatgpt-history --input-dir /Users/akitani/Downloads --output-dir /Users/akitani/Pulse/Imports/chatgpt; then' in wrapper
     assert 'echo "warning: chatgpt history refresh failed; continuing with existing import" >&2' in wrapper
     assert 'if ! /opt/homebrew/bin/python3 -m hermes_pulse.cli refresh-grok-history --output-dir /Users/akitani/Pulse/Imports/grok/browser-export --cdp-port 9223 --page-size 100; then' in wrapper

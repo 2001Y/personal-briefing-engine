@@ -200,6 +200,25 @@ def render_direct_delivery_wrapper(spec: DirectDeliveryWrapperSpec) -> str:
                     warning_message="warning: grok history refresh failed; continuing with existing import",
                 )
             )
+    if spec.x_signals is not None:
+        refresh_x_oauth2_args = [
+            str(spec.python_executable),
+            "-m",
+            "hermes_pulse.cli",
+            "refresh-x-oauth2",
+            "--shared-env-path",
+            str(spec.shared_env_path),
+            "--xurl-app-name",
+            spec.xurl_app_name,
+            "--min-valid-seconds",
+            "900",
+        ]
+        refresh_commands.append(
+            _render_optional_refresh_command(
+                " ".join(shlex.quote(argument) for argument in refresh_x_oauth2_args),
+                warning_message="warning: X OAuth2 refresh failed; digest will continue without X signals",
+            )
+        )
     shared_env_path = spec.shared_env_path
     shared_env_reference = (
         f"~/{shared_env_path.relative_to(Path.home())}"
