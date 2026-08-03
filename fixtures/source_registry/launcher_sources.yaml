@@ -1,4 +1,6 @@
-include: default_sources.yaml
+include:
+  - default_sources.yaml
+  - official_direct_runtime_sources.yaml
 only_ids:
   - apple-newsroom
   - apple-developer-news
@@ -25,6 +27,57 @@ only_ids:
   - firecrawl-releases
   - xurl-releases
   - tailscale-blog
+  - bun-releases
+  - uv-releases
+  - nodejs-releases
+  - python-releases
+  - github-cli-releases
+  - chezmoi-releases
+  - playwright-releases
+  - quartz-releases
+  - remotion-releases
+  - gsap-releases
+  - cloudflare-workers-sdk-releases
+  - bitwarden-clients-releases
+  - supabase-releases
+  - langchainjs-releases
+  - langgraphjs-releases
+  - langsmith-sdk-releases
+  - mcp-typescript-sdk-releases
+  - openai-python-releases
+  - openai-node-releases
+  - anthropic-typescript-releases
+  - pypi-openai-releases
+  - pypi-certifi-releases
+  - pypi-python-dotenv-releases
+  - pypi-fire-releases
+  - pypi-httpx-releases
+  - pypi-rich-releases
+  - pypi-tenacity-releases
+  - pypi-pyyaml-releases
+  - pypi-ruamel-yaml-releases
+  - pypi-requests-releases
+  - pypi-jinja2-releases
+  - pypi-pydantic-releases
+  - pypi-prompt-toolkit-releases
+  - pypi-croniter-releases
+  - pypi-packaging-releases
+  - pypi-markdown-releases
+  - pypi-pyjwt-releases
+  - pypi-urllib3-releases
+  - pypi-cryptography-releases
+  - pypi-psutil-releases
+  - pypi-websockets-releases
+  - pypi-pathspec-releases
+  - pypi-fastapi-releases
+  - pypi-uvicorn-releases
+  - pypi-python-multipart-releases
+  - pypi-tzdata-releases
+  - pypi-ptyprocess-releases
+  - pypi-pywinpty-releases
+  - pypi-pywin32-releases
+  - pypi-pillow-releases
+  - pypi-concurrent-log-handler-releases
   - nikkei-markets
   - bloomberg-japan
   - reuters-finance

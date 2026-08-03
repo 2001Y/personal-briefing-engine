@@ -1,3 +1,5 @@
+include:
+  - official_direct_runtime_sources.yaml
 sources:
   - id: hacker-news
     source_family: tech_frontpage

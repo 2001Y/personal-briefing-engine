@@ -1,0 +1,666 @@
+# Direct runtime and toolchain sources for Hermes/Pulse.
+# Keep transitive dependencies out; they are covered by their parent release notes.
+sources:
+  - id: bun-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Bun Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/oven-sh/bun/releases.atom
+    search_hints: [site:github.com/oven-sh/bun/releases Bun release]
+    topical_scopes: [developer-tools, javascript, typescript, runtime]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: uv-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: uv Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/astral-sh/uv/releases.atom
+    search_hints: [site:github.com/astral-sh/uv/releases uv release]
+    topical_scopes: [developer-tools, python, package-management, runtime]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: nodejs-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Node.js Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/nodejs/node/releases.atom
+    search_hints: [site:github.com/nodejs/node/releases Node.js release]
+    topical_scopes: [developer-tools, javascript, runtime]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: python-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Python Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/python/cpython/releases.atom
+    search_hints: [site:github.com/python/cpython/releases Python release]
+    topical_scopes: [developer-tools, python, runtime]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: github-cli-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: GitHub CLI Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/cli/cli/releases.atom
+    search_hints: [site:github.com/cli/cli/releases GitHub CLI release]
+    topical_scopes: [developer-tools, git, github, cli]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: chezmoi-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: chezmoi Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/twpayne/chezmoi/releases.atom
+    search_hints: [site:github.com/twpayne/chezmoi/releases chezmoi release]
+    topical_scopes: [developer-tools, dotfiles, macos, configuration]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: playwright-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Playwright Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/microsoft/playwright/releases.atom
+    search_hints: [site:github.com/microsoft/playwright/releases Playwright release]
+    topical_scopes: [developer-tools, browser-automation, testing]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: quartz-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Quartz Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/jackyzha0/quartz/releases.atom
+    search_hints: [site:github.com/jackyzha0/quartz/releases Quartz release]
+    topical_scopes: [developer-tools, knowledge-management, documentation]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: remotion-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Remotion Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/remotion-dev/remotion/releases.atom
+    search_hints: [site:github.com/remotion-dev/remotion/releases Remotion release]
+    topical_scopes: [developer-tools, video, react, typescript]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: gsap-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: GSAP Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/greensock/GSAP/releases.atom
+    search_hints: [site:github.com/greensock/GSAP/releases GSAP release]
+    topical_scopes: [developer-tools, animation, javascript, video]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: cloudflare-workers-sdk-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Cloudflare Workers SDK Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/cloudflare/workers-sdk/releases.atom
+    search_hints: [site:github.com/cloudflare/workers-sdk/releases Wrangler release]
+    topical_scopes: [developer-tools, cloudflare, workers, javascript]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: bitwarden-clients-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Bitwarden Clients Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/bitwarden/clients/releases.atom
+    search_hints: [site:github.com/bitwarden/clients/releases Bitwarden release]
+    topical_scopes: [developer-tools, security, password-management]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: supabase-releases
+    source_family: official_runtime_updates
+    domain: github.com
+    title: Supabase Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/supabase/supabase/releases.atom
+    search_hints: [site:github.com/supabase/supabase/releases Supabase release]
+    topical_scopes: [developer-tools, database, backend, supabase]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: langchainjs-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: LangChain.js Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/langchain-ai/langchainjs/releases.atom
+    search_hints: [site:github.com/langchain-ai/langchainjs/releases LangChain.js release]
+    topical_scopes: [developer-tools, agents, langchain, javascript]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: langgraphjs-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: LangGraph.js Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/langchain-ai/langgraphjs/releases.atom
+    search_hints: [site:github.com/langchain-ai/langgraphjs/releases LangGraph.js release]
+    topical_scopes: [developer-tools, agents, langgraph, javascript]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: langsmith-sdk-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: LangSmith SDK Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/langchain-ai/langsmith-sdk/releases.atom
+    search_hints: [site:github.com/langchain-ai/langsmith-sdk/releases LangSmith SDK release]
+    topical_scopes: [developer-tools, agents, observability, langsmith]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: mcp-typescript-sdk-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: Model Context Protocol TypeScript SDK Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/modelcontextprotocol/typescript-sdk/releases.atom
+    search_hints: [site:github.com/modelcontextprotocol/typescript-sdk/releases MCP TypeScript SDK release]
+    topical_scopes: [developer-tools, mcp, agents, typescript]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: openai-python-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: OpenAI Python SDK Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/openai/openai-python/releases.atom
+    search_hints: [site:github.com/openai/openai-python/releases OpenAI Python SDK release]
+    topical_scopes: [developer-tools, ai, openai, python, sdk]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: openai-node-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: OpenAI Node SDK Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/openai/openai-node/releases.atom
+    search_hints: [site:github.com/openai/openai-node/releases OpenAI Node SDK release]
+    topical_scopes: [developer-tools, ai, openai, javascript, sdk]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: anthropic-typescript-releases
+    source_family: official_sdk_updates
+    domain: github.com
+    title: Anthropic TypeScript SDK Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/anthropics/anthropic-sdk-typescript/releases.atom
+    search_hints: [site:github.com/anthropics/anthropic-sdk-typescript/releases Anthropic TypeScript SDK release]
+    topical_scopes: [developer-tools, ai, anthropic, javascript, sdk]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-openai-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI openai Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/openai/releases.xml
+    search_hints: [site:pypi.org/project/openai openai Python release]
+    topical_scopes: [developer-tools, python, ai, openai]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-certifi-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI certifi Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/certifi/releases.xml
+    search_hints: [site:pypi.org/project/certifi certifi release]
+    topical_scopes: [developer-tools, python, security]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-python-dotenv-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI python-dotenv Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/python-dotenv/releases.xml
+    search_hints: [site:pypi.org/project/python-dotenv python-dotenv release]
+    topical_scopes: [developer-tools, python, configuration]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-fire-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI fire Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/fire/releases.xml
+    search_hints: [site:pypi.org/project/fire Python fire release]
+    topical_scopes: [developer-tools, python, cli]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-httpx-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI httpx Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/httpx/releases.xml
+    search_hints: [site:pypi.org/project/httpx httpx release]
+    topical_scopes: [developer-tools, python, http]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-rich-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI rich Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/rich/releases.xml
+    search_hints: [site:pypi.org/project/rich rich Python release]
+    topical_scopes: [developer-tools, python, cli]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-tenacity-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI tenacity Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/tenacity/releases.xml
+    search_hints: [site:pypi.org/project/tenacity tenacity release]
+    topical_scopes: [developer-tools, python, reliability]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pyyaml-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI PyYAML Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pyyaml/releases.xml
+    search_hints: [site:pypi.org/project/pyyaml PyYAML release]
+    topical_scopes: [developer-tools, python, configuration]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-ruamel-yaml-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI ruamel.yaml Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/ruamel.yaml/releases.xml
+    search_hints: [site:pypi.org/project/ruamel.yaml ruamel.yaml release]
+    topical_scopes: [developer-tools, python, configuration]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-requests-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI requests Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/requests/releases.xml
+    search_hints: [site:pypi.org/project/requests requests release]
+    topical_scopes: [developer-tools, python, http]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-jinja2-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI Jinja2 Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/jinja2/releases.xml
+    search_hints: [site:pypi.org/project/jinja2 Jinja2 release]
+    topical_scopes: [developer-tools, python, templating]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pydantic-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI Pydantic Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pydantic/releases.xml
+    search_hints: [site:pypi.org/project/pydantic Pydantic release]
+    topical_scopes: [developer-tools, python, validation, api]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-prompt-toolkit-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI prompt-toolkit Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/prompt-toolkit/releases.xml
+    search_hints: [site:pypi.org/project/prompt-toolkit prompt-toolkit release]
+    topical_scopes: [developer-tools, python, cli, terminal]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-croniter-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI croniter Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/croniter/releases.xml
+    search_hints: [site:pypi.org/project/croniter croniter release]
+    topical_scopes: [developer-tools, python, scheduling]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-packaging-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI packaging Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/packaging/releases.xml
+    search_hints: [site:pypi.org/project/packaging packaging release]
+    topical_scopes: [developer-tools, python, package-management]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-markdown-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI Markdown Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/markdown/releases.xml
+    search_hints: [site:pypi.org/project/markdown Python Markdown release]
+    topical_scopes: [developer-tools, python, documentation]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pyjwt-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI PyJWT Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pyjwt/releases.xml
+    search_hints: [site:pypi.org/project/pyjwt PyJWT release]
+    topical_scopes: [developer-tools, python, security, authentication]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-urllib3-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI urllib3 Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/urllib3/releases.xml
+    search_hints: [site:pypi.org/project/urllib3 urllib3 release]
+    topical_scopes: [developer-tools, python, http, security]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-cryptography-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI cryptography Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/cryptography/releases.xml
+    search_hints: [site:pypi.org/project/cryptography cryptography release]
+    topical_scopes: [developer-tools, python, security]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-psutil-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI psutil Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/psutil/releases.xml
+    search_hints: [site:pypi.org/project/psutil psutil release]
+    topical_scopes: [developer-tools, python, observability]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-websockets-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI websockets Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/websockets/releases.xml
+    search_hints: [site:pypi.org/project/websockets websockets release]
+    topical_scopes: [developer-tools, python, networking, realtime]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pathspec-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI pathspec Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pathspec/releases.xml
+    search_hints: [site:pypi.org/project/pathspec pathspec release]
+    topical_scopes: [developer-tools, python, filesystems]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-fastapi-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI FastAPI Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/fastapi/releases.xml
+    search_hints: [site:pypi.org/project/fastapi FastAPI release]
+    topical_scopes: [developer-tools, python, api, web]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-uvicorn-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI Uvicorn Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/uvicorn/releases.xml
+    search_hints: [site:pypi.org/project/uvicorn Uvicorn release]
+    topical_scopes: [developer-tools, python, api, web]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-python-multipart-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI python-multipart Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/python-multipart/releases.xml
+    search_hints: [site:pypi.org/project/python-multipart python-multipart release]
+    topical_scopes: [developer-tools, python, web]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-tzdata-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI tzdata Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/tzdata/releases.xml
+    search_hints: [site:pypi.org/project/tzdata tzdata release]
+    topical_scopes: [developer-tools, python, timezone]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-ptyprocess-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI ptyprocess Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/ptyprocess/releases.xml
+    search_hints: [site:pypi.org/project/ptyprocess ptyprocess release]
+    topical_scopes: [developer-tools, python, terminal]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pywinpty-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI pywinpty Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pywinpty/releases.xml
+    search_hints: [site:pypi.org/project/pywinpty pywinpty release]
+    topical_scopes: [developer-tools, python, terminal, windows]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pywin32-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI pywin32 Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pywin32/releases.xml
+    search_hints: [site:pypi.org/project/pywin32 pywin32 release]
+    topical_scopes: [developer-tools, python, windows]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-pillow-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI Pillow Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/pillow/releases.xml
+    search_hints: [site:pypi.org/project/pillow Pillow release]
+    topical_scopes: [developer-tools, python, imaging]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
+  - id: pypi-concurrent-log-handler-releases
+    source_family: official_library_updates
+    domain: pypi.org
+    title: PyPI concurrent-log-handler Releases
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://pypi.org/rss/project/concurrent-log-handler/releases.xml
+    search_hints: [site:pypi.org/project/concurrent-log-handler concurrent-log-handler release]
+    topical_scopes: [developer-tools, python, observability]
+    category_hint: it
+    language: en
+    item_limit: 5
+    requires_primary_confirmation: false
