@@ -15,6 +15,16 @@ only_ids:
   - itmedia-news
   - publickey
   - google-news-it
+  - openwiki-releases
+  - deepagentsjs-releases
+  - hermes-agent-releases
+  - codex-cli-releases
+  - claude-code-releases
+  - browser-use-releases
+  - context7-releases
+  - firecrawl-releases
+  - xurl-releases
+  - tailscale-blog
   - nikkei-markets
   - bloomberg-japan
   - reuters-finance

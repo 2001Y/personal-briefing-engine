@@ -101,6 +101,158 @@ sources:
     language: en
     requires_primary_confirmation: false
 
+  # Official release/update feeds for agent, developer, browser, data, and network tools.
+  # Keep these separate from broad AI news so package/CLI/runtime changes remain visible.
+  - id: openwiki-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: OpenWiki Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/langchain-ai/openwiki/releases.atom
+    search_hints:
+      - site:github.com/langchain-ai/openwiki/releases OpenWiki release
+    topical_scopes: [developer-tools, agents, documentation, openwiki]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: deepagentsjs-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: LangChain Deep Agents Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/langchain-ai/deepagentsjs/releases.atom
+    search_hints:
+      - site:github.com/langchain-ai/deepagentsjs/releases Deep Agents release
+    topical_scopes: [developer-tools, agents, langchain, deepagents]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: hermes-agent-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: Hermes Agent Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/NousResearch/hermes-agent/releases.atom
+    search_hints:
+      - site:github.com/NousResearch/hermes-agent/releases Hermes Agent release
+    topical_scopes: [developer-tools, agents, hermes, terminal]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: codex-cli-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: OpenAI Codex CLI Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/openai/codex/releases.atom
+    search_hints:
+      - site:github.com/openai/codex/releases Codex CLI release
+    topical_scopes: [developer-tools, agents, codex, terminal]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: claude-code-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: Anthropic Claude Code Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/anthropics/claude-code/releases.atom
+    search_hints:
+      - site:github.com/anthropics/claude-code/releases Claude Code release
+    topical_scopes: [developer-tools, agents, claude, mcp]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: browser-use-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: Browser Use Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/browser-use/browser-use/releases.atom
+    search_hints:
+      - site:github.com/browser-use/browser-use/releases browser-use release
+    topical_scopes: [developer-tools, agents, browser-automation, python]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: context7-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: Context7 Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/upstash/context7/releases.atom
+    search_hints:
+      - site:github.com/upstash/context7/releases Context7 release MCP
+    topical_scopes: [developer-tools, mcp, documentation, context7]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: firecrawl-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: Firecrawl Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/firecrawl/firecrawl/releases.atom
+    search_hints:
+      - site:github.com/firecrawl/firecrawl/releases Firecrawl release
+    topical_scopes: [developer-tools, web-data, crawling, firecrawl]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: xurl-releases
+    source_family: official_tool_updates
+    domain: github.com
+    title: xurl Releases
+    acquisition_mode: atom_poll
+    authority_tier: primary
+    rss_url: https://github.com/xdevplatform/xurl/releases.atom
+    search_hints:
+      - site:github.com/xdevplatform/xurl/releases xurl release
+    topical_scopes: [developer-tools, x, cli, api]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: tailscale-blog
+    source_family: official_tool_updates
+    domain: tailscale.com
+    title: Tailscale Blog
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://tailscale.com/blog/index.xml
+    search_hints:
+      - site:tailscale.com/blog Tailscale update security networking
+    topical_scopes: [developer-tools, networking, security, tailscale, ai-agents]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
   - id: anthropic-newsroom
     source_family: official_lab_news
     domain: anthropic.com
