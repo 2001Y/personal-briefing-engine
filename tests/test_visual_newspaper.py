@@ -15,6 +15,7 @@ from hermes_pulse.visual_newspaper import (
     create_cover_gif,
     load_previous_day_slots,
     post_newspaper_files,
+    render_pdf_and_pages,
     snapshot_pulse_slot,
 )
 
@@ -54,6 +55,18 @@ def test_snapshot_preserves_summary_and_manifest_identity(tmp_path: Path) -> Non
     assert manifest["completion_status"] == "completed"
     assert manifest["run_id"] == "run-morning"
     assert (snapshot / "summary" / "codex-digest.md").exists()
+
+
+def test_snapshot_is_immutable_after_completed_write(tmp_path: Path) -> None:
+    source = _source_run(tmp_path, "morning")
+    slot_root = tmp_path / "slots"
+    snapshot = snapshot_pulse_slot(source, slot_root, local_date="2026-08-03", slot="morning")
+    (source / "summary" / "codex-digest.md").write_text("changed\n", encoding="utf-8")
+
+    with pytest.raises(NewspaperInputError, match="immutable"):
+        snapshot_pulse_slot(source, slot_root, local_date="2026-08-03", slot="morning")
+
+    assert (snapshot / "summary" / "codex-digest.md").read_text(encoding="utf-8") != "changed\n"
 
 
 def test_previous_day_requires_all_three_completed_slots(tmp_path: Path) -> None:
@@ -142,6 +155,39 @@ def test_cover_gif_is_animated(tmp_path: Path) -> None:
         assert image.info.get("duration")
 
 
+def test_render_rejects_stale_pdf_when_chrome_fails(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    html = tmp_path / "source.html"
+    html.write_text("<html><body>test</body></html>", encoding="utf-8")
+    output = tmp_path / "output"
+    output.mkdir()
+    stale_pdf = output / "newspaper.pdf"
+    stale_pdf.write_bytes(b"stale")
+    chrome = tmp_path / "chrome"
+    chrome.write_bytes(b"fake")
+
+    class FailedProcess:
+        def poll(self) -> int:
+            return 1
+
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            return "", "chrome failed"
+
+        def terminate(self) -> None:
+            return None
+
+        def wait(self, timeout: float | None = None) -> int:
+            return 1
+
+    monkeypatch.setattr(
+        "hermes_pulse.visual_newspaper.subprocess.Popen",
+        lambda *args, **kwargs: FailedProcess(),
+    )
+
+    with pytest.raises(RuntimeError, match="Chrome PDF rendering failed"):
+        render_pdf_and_pages(html, output, chrome_path=chrome, timeout_seconds=1)
+    assert not stale_pdf.exists()
+
+
 def test_post_newspaper_files_uses_one_root_batch_without_comment_or_thread(tmp_path: Path) -> None:
     cover = tmp_path / "cover.gif"
     body = tmp_path / "page-02.png"
@@ -165,6 +211,20 @@ def test_post_newspaper_files_uses_one_root_batch_without_comment_or_thread(tmp_
     assert calls[0]["paths"] == [cover, body]
     assert calls[0]["initial_comment"] is None
     assert calls[0]["thread_ts"] is None
+
+
+def test_post_newspaper_files_rejects_incomplete_slack_response(tmp_path: Path) -> None:
+    cover = tmp_path / "cover.gif"
+    body = tmp_path / "page-02.png"
+    for path in (cover, body):
+        Image.new("RGB", (10, 10), "white").save(path, format="GIF" if path.suffix == ".gif" else "PNG")
+
+    with pytest.raises(RuntimeError, match="uploaded 1/2"):
+        post_newspaper_files(
+            [cover, body],
+            channel="D0AT8A3RB9A",
+            uploader=lambda *_args, **_kwargs: {"ok": True, "files": [{"id": "F1"}]},
+        )
 
 
 def test_post_newspaper_files_rejects_non_dm_or_non_image_targets(tmp_path: Path) -> None:

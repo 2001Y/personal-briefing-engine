@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -70,6 +71,42 @@ def _read_json(path: Path, *, default: Any = None) -> Any:
         raise NewspaperInputError(f"invalid JSON: {path}") from exc
 
 
+def _atomic_write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as stream:
+            temporary_path = Path(stream.name)
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_path, path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+
+def _slot_destination(slot_root: str | Path, local_date: str, slot: str) -> Path:
+    root = Path(slot_root).expanduser().resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    destination = root / local_date / slot
+    resolved_destination = destination.resolve(strict=False)
+    try:
+        resolved_destination.relative_to(root)
+    except ValueError as exc:
+        raise NewspaperInputError("slot destination escapes slot root") from exc
+    if destination.exists() and destination.is_symlink():
+        raise NewspaperInputError("slot destination is a symlink")
+    return destination
+
+
 def _copy_if_present(source: Path, destination: Path) -> None:
     if source.exists():
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -94,7 +131,7 @@ def snapshot_pulse_slot(
     if parsed_date.isoformat() != local_date:
         raise ValueError(f"local_date must be ISO date: {local_date!r}")
     source_directory = Path(source_directory)
-    destination = Path(slot_root) / local_date / slot
+    destination = _slot_destination(slot_root, local_date, slot)
     summary_source = source_directory / SUMMARY_RELATIVE_PATH
     source_errors_source = source_directory / SOURCE_ERRORS_RELATIVE_PATH
     if not summary_source.exists():
@@ -104,6 +141,14 @@ def snapshot_pulse_slot(
     source_errors = _read_json(source_errors_source, default=None)
     if not isinstance(source_errors, dict):
         raise NewspaperInputError(f"source errors artifact is invalid: {source_errors_source}")
+    summary_sha256 = _sha256(summary_source)
+    existing_manifest_path = destination / MANIFEST_NAME
+    if existing_manifest_path.exists():
+        existing_manifest = _read_json(existing_manifest_path, default={})
+        if isinstance(existing_manifest, dict) and existing_manifest.get("completion_status") == "completed":
+            if existing_manifest.get("summary_sha256") == summary_sha256 and not source_errors:
+                return destination
+            raise NewspaperInputError(f"immutable completed snapshot already exists: {destination}")
 
     summary_destination = destination / SUMMARY_RELATIVE_PATH
     summary_destination.parent.mkdir(parents=True, exist_ok=True)
@@ -124,13 +169,13 @@ def snapshot_pulse_slot(
         "run_id": run_metadata.get("run_id") or run_metadata.get("execution_id"),
         "completion_status": "completed" if not source_errors else "failed",
         "canonical_summary": str(SUMMARY_RELATIVE_PATH),
-        "summary_sha256": _sha256(summary_destination),
+        "summary_sha256": summary_sha256,
         "source_errors": source_errors,
         "generated_at": _utc_now(),
     }
-    (destination / MANIFEST_NAME).write_text(
+    _atomic_write_text(
+        destination / MANIFEST_NAME,
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8",
     )
     return destination
 
@@ -342,9 +387,11 @@ def render_pdf_and_pages(
     import fitz
 
     html_path = Path(html_path).resolve()
-    output_directory = Path(output_directory)
+    output_directory = Path(output_directory).resolve()
     output_directory.mkdir(parents=True, exist_ok=True)
     pdf_path = output_directory / "newspaper.pdf"
+    if pdf_path.exists():
+        pdf_path.unlink()
     chrome = Path(chrome_path)
     if not chrome.exists():
         raise FileNotFoundError(f"Chrome binary is missing: {chrome}")
@@ -353,7 +400,6 @@ def render_pdf_and_pages(
             str(chrome),
             "--headless=new",
             "--disable-gpu",
-            "--no-sandbox",
             "--disable-dev-shm-usage",
             f"--user-data-dir={profile}",
             "--no-pdf-header-footer",
@@ -482,7 +528,7 @@ def create_newspaper_artifacts(
         "delivery": {"status": "pending"},
     }
     manifest_path = output_directory / MANIFEST_NAME
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _atomic_write_text(manifest_path, json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
     return {
         "directory": output_directory,
         "html": html_path,
@@ -522,4 +568,8 @@ def post_newspaper_files(
     )
     if not isinstance(result, dict) or result.get("ok") is not True:
         raise RuntimeError(f"Slack newspaper upload failed: {result!r}")
+    uploaded_files = result.get("files")
+    if not isinstance(uploaded_files, list) or len(uploaded_files) != len(normalized):
+        count = len(uploaded_files) if isinstance(uploaded_files, list) else 0
+        raise RuntimeError(f"Slack newspaper upload incomplete: uploaded {count}/{len(normalized)}")
     return result

@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 import sys
+import tempfile
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -71,11 +72,29 @@ def _write_delivery_receipt(manifest_path: Path, result: dict[str, Any], channel
     manifest["delivery"] = {
         "status": "ok",
         "platform": "slack",
-        "channel": os.environ.get("SLACK_HOME_CHANNEL", DEFAULT_CHANNEL),
+        "channel": channel,
         "response": response,
         "delivered_at": datetime.now(TZ).isoformat(),
     }
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            dir=manifest_path.parent,
+            prefix=f".{manifest_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as stream:
+            temporary_path = Path(stream.name)
+            stream.write(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary_path, manifest_path)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
 
 
 def main(argv: list[str] | None = None) -> int:

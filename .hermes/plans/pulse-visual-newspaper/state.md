@@ -1,5 +1,5 @@
 # STATE: pulse-visual-newspaper
-updated: 2026-08-04T17:48:00+09:00
+updated: 2026-08-04T18:26:25+09:00
 
 ## 目的
 既存のHermes Pulse 08:00/14:00/22:00配信を維持し、前日3runを01:10 JSTに日本語の魔法新聞へまとめ、PDFを正本として表紙GIFと本文画像をSlack DM直下へ1メッセージで投稿する。
@@ -16,7 +16,8 @@ updated: 2026-08-04T17:48:00+09:00
 - newspaper scriptのpositive dry-runはHTML/PDF/PNG/cover.gifとupload order（cover.gif + page-02.png）を返した。
 - 2026-08-03の実データは3slotが揃っていないため、live newspaperはfail-closedで投稿しなかった。
 - Cron job `86a175fdf20f` を `10 1 * * *`、script-only、`slack:D0AT8A3RB9A`、`no_agent=true`で作成し、next_run `2026-08-05T01:10:00+09:00`をreadbackした。
-- 全suiteは473 passed / 1 failed。失敗は既存dirty変更に関係する `tests/test_state_runtime.py::test_review_trigger_quality_surfaces_stale_inputs_from_runtime_state` で、今回の新規テストは7 passed。
+- 全suiteは479 passed / 1 failed。失敗は既存dirty変更に関係する `tests/test_state_runtime.py::test_review_trigger_quality_surfaces_stale_inputs_from_runtime_state` で、今回のfocused新聞テストは13 passed。
+- 独立reviewのfinding（path confinement、completed snapshot上書き、stale PDF、Slack file数、atomic receipt、Chrome sandbox）を修正し、no-sandbox実renderもPDF 2ページ/GIF生成でreadbackした。
 
 ## 決定事項
 - 決定: Pulseの通常収集・要約・既存DM投稿は変更せず、各成功run後にslot snapshotを追加する。
@@ -38,9 +39,8 @@ updated: 2026-08-04T17:48:00+09:00
 ## 未解決 / リスク
 - Slackのlive GIF表示はworkspace/clientの自動再生設定に依存し、live E2E投稿までは未検証。
 - current repoの既存dirty変更は今回のcommitに絶対に含めない。
+- pre-push hookのgrepathy補助CLIはdist-test/src/cli.js欠落でNode errorを出したが、git push自体はexit 0でremote SHAをreadback済み。
 
 ## 次の一手
-1. tests/test_visual_newspaper.py をREDとして追加し、focused pytestでmissing module failureを確認。
-2. 新規moduleを実装し、focused/full testsと実データdry-runを実行。
-3. launcher sidecar、cron script、01:10 jobを追加し、non-target job fieldsをreadback。
-4. exact-path isolated commit/pushとremote readbackを実施する。
+1. 2026-08-05 01:10 JSTに、前日3slotが揃う実データでscript-only cronのlive E2E（PDF/GIF生成、Slack DM root batch、receipt）をreadbackする。
+2. Slack clientの自動再生設定によるGIF表示差異は、必要なら1回のlive投稿で確認する。
