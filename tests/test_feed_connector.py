@@ -2,7 +2,9 @@ import gzip
 from pathlib import Path
 from urllib.request import Request
 
+import pytest
 import hermes_pulse.connectors.feed_registry as feed_registry_module
+from hermes_pulse.connectors.errors import SourceCollectionError
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
 from hermes_pulse.models import SourceRegistryEntry
 from hermes_pulse.source_registry import load_source_registry
@@ -417,10 +419,10 @@ def test_feed_registry_connector_continues_when_a_feed_fetch_fails() -> None:
             raise TimeoutError("timed out")
         return FIXTURE_XML
 
-    items = FeedRegistryConnector(fetcher=fetcher).collect(entries)
+    with pytest.raises(SourceCollectionError) as error_info:
+        FeedRegistryConnector(fetcher=fetcher).collect(entries)
 
-    assert [item.source for item in items] == ["official-blog"]
-    assert [item.title for item in items] == ["Launch update"]
+    assert error_info.value.errors == {"broken-feed": "timed out"}
 
 
 def test_feed_registry_connector_continues_when_a_feed_parse_fails() -> None:
@@ -450,10 +452,10 @@ def test_feed_registry_connector_continues_when_a_feed_parse_fails() -> None:
             return "<rss><channel><item>"
         return FIXTURE_XML
 
-    items = FeedRegistryConnector(fetcher=fetcher).collect(entries)
+    with pytest.raises(SourceCollectionError) as error_info:
+        FeedRegistryConnector(fetcher=fetcher).collect(entries)
 
-    assert [item.source for item in items] == ["official-blog"]
-    assert [item.title for item in items] == ["Launch update"]
+    assert error_info.value.errors == {"malformed-feed": "no element found: line 1, column 20"}
 
 
 def test_feed_registry_connector_reports_per_source_errors_to_callback() -> None:
@@ -491,8 +493,9 @@ def test_feed_registry_connector_reports_per_source_errors_to_callback() -> None
         success_handler=lambda entry_id: reported_successes.append(entry_id),
     )
 
-    items = connector.collect(entries)
+    with pytest.raises(SourceCollectionError) as error_info:
+        connector.collect(entries)
 
-    assert [item.source for item in items] == ["official-blog"]
+    assert error_info.value.errors == {"broken-feed": "timed out"}
     assert reported_errors == [("broken-feed", "timed out")]
     assert reported_successes == ["official-blog"]

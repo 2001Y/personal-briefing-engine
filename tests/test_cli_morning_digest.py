@@ -1,4 +1,5 @@
 import json
+import logging
 import tomllib
 from datetime import date
 from pathlib import Path
@@ -6,6 +7,7 @@ from pathlib import Path
 import pytest
 
 import hermes_pulse.cli
+from hermes_pulse.connectors.errors import SourceCollectionError
 from hermes_pulse.models import CitationLink, CollectedItem, ItemTimestamps, Provenance
 from hermes_pulse.summarization.base import SummaryArtifact
 
@@ -62,6 +64,42 @@ def _install_stub_codex_summarizer(monkeypatch, template: str | None = None) -> 
 
     monkeypatch.setattr(hermes_pulse.cli, "CodexCliSummarizer", StubCodexCliSummarizer)
     return calls
+
+
+def test_digest_continues_and_logs_warning_on_source_collection_error(
+    monkeypatch, tmp_path: Path, caplog
+) -> None:
+    _install_stub_codex_summarizer(monkeypatch, template="# Codex Digest\n\n- Local notes\n")
+
+    class FailingFeedRegistryConnector:
+        def __init__(self, fetcher=None, error_handler=None, success_handler=None) -> None:
+            self._error_handler = error_handler
+
+        def collect(self, entries):
+            if self._error_handler is not None:
+                self._error_handler("official-blog", "feed timeout")
+            raise SourceCollectionError({"official-blog": "feed timeout"})
+
+    monkeypatch.setattr(hermes_pulse.cli, "FeedRegistryConnector", FailingFeedRegistryConnector)
+    archive_root = tmp_path / "archive"
+
+    with caplog.at_level(logging.WARNING, logger="hermes_pulse.cli"):
+        assert hermes_pulse.cli.main(
+            [
+                "morning-digest",
+                "--source-registry",
+                str(SOURCE_REGISTRY_PATH),
+                "--notes",
+                str(NOTES_PATH),
+                "--archive-root",
+                str(archive_root),
+            ]
+        ) == 0
+
+    assert "Pulse source collection warning connector=feed_registry" in caplog.text
+    assert "official-blog" in caplog.text
+    summary_path = next(archive_root.glob("*/summary/codex-digest.md"))
+    assert summary_path.read_text() == "# Codex Digest\n\n- Local notes\n"
 
 
 def test_main_entrypoint_exists_and_exits_successfully() -> None:

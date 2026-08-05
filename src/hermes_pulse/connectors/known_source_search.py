@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, quote_plus, unquote, urljoin, urlparse
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
+from hermes_pulse.connectors.errors import SourceCollectionError
 from hermes_pulse.models import CitationLink, CollectedItem, Provenance, SourceRegistryEntry
 
 
@@ -45,6 +46,7 @@ class KnownSourceSearchConnector:
 
     def collect(self, entries: Sequence[SourceRegistryEntry]) -> list[CollectedItem]:
         items: list[CollectedItem] = []
+        errors: dict[str, str] = {}
         for entry in entries:
             if entry.acquisition_mode != "known_source_search":
                 continue
@@ -58,9 +60,13 @@ class KnownSourceSearchConnector:
                 if self._success_handler is not None:
                     self._success_handler(entry.id)
             except Exception as exc:
-                logger.warning("Skipping known source search %s after fetch/parse failure: %s", entry.id, exc)
+                message = str(exc)
+                logger.warning("Skipping known source search %s after fetch/parse failure: %s", entry.id, message)
+                errors[entry.id] = message
                 if self._error_handler is not None:
-                    self._error_handler(entry.id, str(exc))
+                    self._error_handler(entry.id, message)
+        if errors:
+            raise SourceCollectionError(errors)
         return items
 
     def _parse_items(self, entry: SourceRegistryEntry, payload: str, query: str) -> list[CollectedItem]:

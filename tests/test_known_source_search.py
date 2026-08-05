@@ -3,7 +3,9 @@ from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlparse
 from urllib.request import Request
 
+import pytest
 import hermes_pulse.connectors.known_source_search as known_source_search_module
+from hermes_pulse.connectors.errors import SourceCollectionError
 from hermes_pulse.connectors.known_source_search import KnownSourceSearchConnector
 from hermes_pulse.models import SourceRegistryEntry
 
@@ -289,9 +291,10 @@ def test_known_source_search_connector_reports_per_source_errors_to_callback() -
         error_handler=lambda entry_id, message: reported_errors.append((entry_id, message)),
     )
 
-    items = connector.collect([entry])
+    with pytest.raises(SourceCollectionError) as error_info:
+        connector.collect([entry])
 
-    assert items == []
+    assert error_info.value.errors == {"discovery-only-source": "search timed out"}
     assert reported_errors == [("discovery-only-source", "search timed out")]
 
 
@@ -317,12 +320,13 @@ def test_known_source_search_connector_reports_403_without_retrying_another_sear
         search_hints=["site:zeiss.com cine lens supreme radiance nano announcement"],
     )
 
-    items = KnownSourceSearchConnector(
-        fetcher=fetcher,
-        error_handler=lambda entry_id, message: reported_errors.append((entry_id, message)),
-    ).collect([entry])
+    with pytest.raises(SourceCollectionError) as error_info:
+        KnownSourceSearchConnector(
+            fetcher=fetcher,
+            error_handler=lambda entry_id, message: reported_errors.append((entry_id, message)),
+        ).collect([entry])
 
-    assert items == []
+    assert error_info.value.errors == {"zeiss-cine": "HTTP Error 403: Forbidden"}
     assert requested_urls == [
         "https://html.duckduckgo.com/html/?q=site%3Azeiss.com+cine+lens+supreme+radiance+nano+announcement"
     ]

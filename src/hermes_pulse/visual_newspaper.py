@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import html
 import json
+import logging
 import os
 import re
 import shutil
@@ -33,6 +34,7 @@ RUN_RELATIVE_PATH = Path("metadata/run.json")
 MANIFEST_NAME = "manifest.json"
 DEFAULT_TIMEZONE = "Asia/Tokyo"
 DEFAULT_CHROME_PATH = Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+logger = logging.getLogger(__name__)
 
 
 class NewspaperInputError(RuntimeError):
@@ -146,7 +148,7 @@ def snapshot_pulse_slot(
     if existing_manifest_path.exists():
         existing_manifest = _read_json(existing_manifest_path, default={})
         if isinstance(existing_manifest, dict) and existing_manifest.get("completion_status") == "completed":
-            if existing_manifest.get("summary_sha256") == summary_sha256 and not source_errors:
+            if existing_manifest.get("summary_sha256") == summary_sha256:
                 return destination
             raise NewspaperInputError(f"immutable completed snapshot already exists: {destination}")
 
@@ -157,6 +159,8 @@ def snapshot_pulse_slot(
         _copy_if_present(source_directory / relative_path, destination / relative_path)
 
     source_errors = _read_json(destination / SOURCE_ERRORS_RELATIVE_PATH, default=source_errors)
+    if source_errors:
+        logger.warning("Pulse newspaper source warnings preserved: %s", ", ".join(sorted(source_errors)))
     run_metadata = _read_json(destination / RUN_RELATIVE_PATH, default={})
     if not isinstance(run_metadata, dict):
         run_metadata = {}
@@ -167,7 +171,7 @@ def snapshot_pulse_slot(
         "slot": slot,
         "scheduled_time": SLOT_TIMES[slot],
         "run_id": run_metadata.get("run_id") or run_metadata.get("execution_id"),
-        "completion_status": "completed" if not source_errors else "failed",
+        "completion_status": "completed",
         "canonical_summary": str(SUMMARY_RELATIVE_PATH),
         "summary_sha256": summary_sha256,
         "source_errors": source_errors,
@@ -198,7 +202,11 @@ def _load_slot_snapshot(slot_directory: Path, expected_date: str, expected_slot:
     if not isinstance(source_errors, dict):
         raise NewspaperInputError(f"{expected_slot}: source errors metadata is invalid")
     if source_errors:
-        raise NewspaperInputError(f"{expected_slot}: source errors are present")
+        logger.warning(
+            "Pulse newspaper slot source warnings preserved slot=%s sources=%s",
+            expected_slot,
+            ", ".join(sorted(source_errors)),
+        )
     if manifest.get("summary_sha256") != _sha256(summary_path):
         raise NewspaperInputError(f"{expected_slot}: summary hash mismatch")
     return SlotSnapshot(

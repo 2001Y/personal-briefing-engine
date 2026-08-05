@@ -8,6 +8,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
+from hermes_pulse.connectors.errors import SourceCollectionError
 from hermes_pulse.models import CitationLink, CollectedItem, ItemTimestamps, Provenance, SourceRegistryEntry
 
 
@@ -45,6 +46,7 @@ class FeedRegistryConnector:
 
     def collect(self, entries: Sequence[SourceRegistryEntry]) -> list[CollectedItem]:
         items: list[CollectedItem] = []
+        errors: dict[str, str] = {}
         for entry in entries:
             if not entry.rss_url:
                 continue
@@ -62,9 +64,13 @@ class FeedRegistryConnector:
                 if self._success_handler is not None:
                     self._success_handler(entry.id)
             except Exception as exc:
-                logger.warning("Skipping feed source %s after fetch/parse failure: %s", entry.id, exc)
+                message = str(exc)
+                logger.warning("Skipping feed source %s after fetch/parse failure: %s", entry.id, message)
+                errors[entry.id] = message
                 if self._error_handler is not None:
-                    self._error_handler(entry.id, str(exc))
+                    self._error_handler(entry.id, message)
+        if errors:
+            raise SourceCollectionError(errors)
         return items
 
     def _parse_items(

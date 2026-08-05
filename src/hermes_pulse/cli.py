@@ -1,6 +1,7 @@
 import argparse
 import inspect
 import json
+import logging
 import re
 import sqlite3
 from collections.abc import Callable, Sequence
@@ -14,6 +15,7 @@ from hermes_pulse.archive import (
 )
 from hermes_pulse.collection import collect_for_trigger
 from hermes_pulse.connectors.audit_context import AuditContextConnector, load_audit_context_fixture
+from hermes_pulse.connectors.errors import SourceCollectionError
 from hermes_pulse.connectors.feed_registry import FeedRegistryConnector
 from hermes_pulse.connectors.chatgpt_history import ChatGPTHistoryConnector
 from hermes_pulse.connectors.gmail import GmailConnector
@@ -70,6 +72,7 @@ from hermes_pulse.x_oauth2 import DEFAULT_SHARED_ENV_PATH, refresh_x_oauth2_toke
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE_REGISTRY = REPO_ROOT / "fixtures/source_registry/default_sources.yaml"
+logger = logging.getLogger(__name__)
 
 
 class BoundConnector:
@@ -78,6 +81,24 @@ class BoundConnector:
 
     def collect(self) -> list[object]:
         return self._collector()
+
+
+def _collect_with_source_warnings(
+    collector: Callable[[], list[object]],
+    *,
+    connector_id: str,
+    source_errors: dict[str, str],
+) -> list[object]:
+    try:
+        return collector()
+    except SourceCollectionError as exc:
+        source_errors.update(exc.errors)
+        logger.warning(
+            "Pulse source collection warning connector=%s sources=%s",
+            connector_id,
+            ", ".join(sorted(exc.errors)),
+        )
+        return []
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1226,20 +1247,28 @@ def _build_digest_with_source_errors(command: str, args: argparse.Namespace) -> 
     )
     connectors = {
         "feed_registry": BoundConnector(
-            lambda: _build_source_registry_connector(
-                FeedRegistryConnector,
-                fetcher=feed_fetcher,
-                error_handler=lambda entry_id, message: source_errors.__setitem__(entry_id, message),
-                success_handler=lambda entry_id: successful_sources.add(entry_id),
-            ).collect(source_registry)
+            lambda: _collect_with_source_warnings(
+                lambda: _build_source_registry_connector(
+                    FeedRegistryConnector,
+                    fetcher=feed_fetcher,
+                    error_handler=lambda entry_id, message: source_errors.__setitem__(entry_id, message),
+                    success_handler=lambda entry_id: successful_sources.add(entry_id),
+                ).collect(source_registry),
+                connector_id="feed_registry",
+                source_errors=source_errors,
+            )
         ),
         "known_source_search": BoundConnector(
-            lambda: _build_source_registry_connector(
-                KnownSourceSearchConnector,
-                fetcher=search_fetcher,
-                error_handler=lambda entry_id, message: source_errors.__setitem__(entry_id, message),
-                success_handler=lambda entry_id: successful_sources.add(entry_id),
-            ).collect(source_registry)
+            lambda: _collect_with_source_warnings(
+                lambda: _build_source_registry_connector(
+                    KnownSourceSearchConnector,
+                    fetcher=search_fetcher,
+                    error_handler=lambda entry_id, message: source_errors.__setitem__(entry_id, message),
+                    success_handler=lambda entry_id: successful_sources.add(entry_id),
+                ).collect(source_registry),
+                connector_id="known_source_search",
+                source_errors=source_errors,
+            )
         ),
     }
     if calendar_runner is not None:

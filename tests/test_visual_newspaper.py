@@ -96,7 +96,7 @@ def test_snapshot_rejects_non_iso_date_path(tmp_path: Path) -> None:
         snapshot_pulse_slot(source, tmp_path / "slots", local_date="../outside", slot="morning")
 
 
-def test_previous_day_rejects_non_empty_source_errors(tmp_path: Path) -> None:
+def test_previous_day_preserves_non_empty_source_errors_as_warnings(tmp_path: Path) -> None:
     for slot in REQUIRED_SLOTS[:2]:
         snapshot_pulse_slot(
             _source_run(tmp_path, slot),
@@ -115,8 +115,10 @@ def test_previous_day_rejects_non_empty_source_errors(tmp_path: Path) -> None:
         slot="evening",
     )
 
-    with pytest.raises(NewspaperInputError, match="evening: run is not completed"):
-        load_previous_day_slots(tmp_path / "slots", date(2026, 8, 3))
+    snapshots = load_previous_day_slots(tmp_path / "slots", date(2026, 8, 3))
+
+    assert snapshots[-1].source_errors == {"x": "timeout"}
+    assert snapshots[-1].manifest["completion_status"] == "completed"
 
 
 def test_newspaper_html_is_japanese_and_keeps_source_links(tmp_path: Path) -> None:
