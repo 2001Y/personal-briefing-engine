@@ -1393,3 +1393,78 @@ sources:
     category_hint: car
     language: ja
     requires_primary_confirmation: true
+
+  - id: huggingface-blog
+    source_family: official_ai_platform_security
+    domain: huggingface.co
+    title: Hugging Face Blog
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://huggingface.co/blog/feed.xml
+    search_hints:
+      - site:huggingface.co/blog AI security incident model safety
+    topical_scopes: [ai, security, model-safety, hugging-face]
+    category_hint: ai
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: aisi-blog
+    source_family: official_ai_safety
+    domain: aisi.gov.uk
+    title: UK AI Security Institute
+    acquisition_mode: rss_poll
+    authority_tier: primary
+    rss_url: https://www.aisi.gov.uk/sitemap.xml
+    search_hints:
+      - site:aisi.gov.uk/blog frontier AI safety cyber evaluation incident
+    topical_scopes: [ai, safety, cybersecurity, evaluations]
+    category_hint: ai
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: false
+
+  - id: groundlevel-ai
+    source_family: specialist_ai_security_media
+    domain: groundlevel-ai.com
+    title: Ground Level AI
+    acquisition_mode: rss_poll
+    authority_tier: trusted_secondary
+    rss_url: https://www.groundlevel-ai.com/feed
+    search_hints:
+      - site:groundlevel-ai.com AI safety security incident frontier models
+    topical_scopes: [ai, safety, cybersecurity, frontier-models]
+    category_hint: ai
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: true
+
+  - id: cybersecurity-dive
+    source_family: specialist_ai_security_media
+    domain: cybersecuritydive.com
+    title: Cybersecurity Dive
+    acquisition_mode: rss_poll
+    authority_tier: trusted_secondary
+    rss_url: https://www.cybersecuritydive.com/feeds/news/
+    search_hints:
+      - site:cybersecuritydive.com AI autonomous agents cybersecurity incident
+    topical_scopes: [cybersecurity, ai, threats, incidents]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: true
+
+  - id: wired-security
+    source_family: specialist_ai_security_media
+    domain: wired.com
+    title: WIRED Security
+    acquisition_mode: rss_poll
+    authority_tier: trusted_secondary
+    rss_url: https://www.wired.com/feed/category/security/latest/rss
+    search_hints:
+      - site:wired.com/story AI agents cybersecurity hacking security
+    topical_scopes: [cybersecurity, ai, hacking, privacy]
+    category_hint: it
+    language: en
+    item_limit: 10
+    requires_primary_confirmation: true
